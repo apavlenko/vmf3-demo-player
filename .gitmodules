@@ -1,0 +1,3 @@
+[submodule "3dparty/QmlVlc"]
+	path = 3dparty/QmlVlc
+	url = git://github.com/RSATom/QmlVlc.git
