@@ -1,6 +1,6 @@
 TEMPLATE = app
 
-QT += qml quick widgets
+QT += qml quick widgets webengine
 
 include(3dparty/QmlVlc/QmlVlc.pri)
 INCLUDEPATH += 3dparty
