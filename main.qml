@@ -79,7 +79,7 @@ ApplicationWindow {
             }
             VlcPlayer {
                 id: vlcPlayer2;
-                mrl: "rtsp://192.168.10.190:1234";
+                mrl: "rtsp://192.168.10.176:1234";
             }
             VlcVideoSurface {
                 id: vlcVideoOut2;
@@ -88,6 +88,7 @@ ApplicationWindow {
             }
             MetadataProvider {
                 id: mdprovider2;
+                address: "192.168.10.176:4321"
                 onLocationsChanged: {
                     console.debug("*** locations.count = " + locations.count);
                     for (var i=0; i<locations.count; ++i)
@@ -113,6 +114,8 @@ ApplicationWindow {
                 text : "draw object"
                 onClicked: {
                     drawObject();
+                    console.debug("mouse2 clicked");
+                    mdprovider2.start();
                 }
             }
             Button {

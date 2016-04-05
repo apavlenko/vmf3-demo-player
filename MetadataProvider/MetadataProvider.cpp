@@ -19,7 +19,7 @@
 #include <stdexcept>
 
 #define USE_NATIVE_ENDIAN
-//#define USE_SIZES_ON_HANDSHAKE
+#define USE_SIZES_ON_HANDSHAKE
 
 #if defined(USE_NATIVE_ENDIAN)
 # define zzntohl(_sz) (_sz)
@@ -144,16 +144,20 @@ bool MetadataProvider::putAddress(const QString& address)
 
 void MetadataProvider::start()
 {
+    std::cerr << "*** MetadataProvider::start()" << std::endl;
     if (!m_working)
     {
+        std::cerr << "*** MetadataProvider::start() : start worker" << std::endl;
         m_worker = std::thread(&MetadataProvider::execute, this);
     }
 }
 
 void MetadataProvider::stop()
 {
+    std::cerr << "*** MetadataProvider::stop()" << std::endl;
     if (m_working)
     {
+        std::cerr << "*** MetadataProvider::stop() : stop worker" << std::endl;
         m_exiting = true;
         m_worker.join();
         m_working = false;
@@ -180,16 +184,16 @@ bool MetadataProvider::connect()
         int status = ::connect(m_sock, (const struct sockaddr*) &server, sizeof(struct sockaddr));
         if (status >= 0)
         {
-            char buf[4];
+            char buf[40000];
 
             // VMF/VMF
-            ssize_t size = receiveMessageRaw(m_sock, buf, 3);
+            ssize_t size = receiveMessageRaw(m_sock, buf, sizeof(buf));
             if ((size == 3) && (buf[0] == 'V') && (buf[1] == 'M') && (buf[2] == 'F'))
             {
                 size = sendMessage(m_sock, buf, 3);
 
                 // XML/OK
-                size = receiveMessageRaw(m_sock, buf, 3);
+                size = receiveMessageRaw(m_sock, buf, sizeof(buf));
                 if ((size == 3) && (buf[0] == 'X') && (buf[1] == 'M') && (buf[2] == 'L'))
                 {
                     buf[0] = 'O';
@@ -225,11 +229,14 @@ void MetadataProvider::disconnect()
 
 void MetadataProvider::execute()
 {
+    std::cerr << "*** MetadataProvider::execute()" << std::endl;
     try
     {
         m_working = true;
 
+        std::cerr << "*** MetadataProvider::execute() : trying to connect" << std::endl;
         ConnectionLock connection(this);
+        std::cerr << "*** MetadataProvider::execute() : connect : " << (connection.isSuccessful() ? "SUCC" : "FAIL") << std::endl;
         if (connection.isSuccessful())
         {
             vmf::FormatXML xml;
@@ -299,6 +306,7 @@ void MetadataProvider::execute()
     {
         std::cerr << "[MetadataProvider] EXCEPTION: " << e.what() << std::endl;
     }
+    std::cerr << "*** MetadataProvider::execute() ***" << std::endl;
 }
 
 QList<Location> MetadataProvider::locations() const
