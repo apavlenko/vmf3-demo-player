@@ -7,6 +7,8 @@ import QtMultimedia 5.0
 
 import QtWebEngine 1.2
 
+import vmf3.demo.metadata 1.0
+
 ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
@@ -83,6 +85,18 @@ ApplicationWindow {
                 id: vlcVideoOut2;
                 source: vlcPlayer2;
                 anchors.fill: parent;
+            }
+            MetadataProvider {
+                id: mdprovider2;
+                onLocationsChanged: {
+                    console.debug("*** locations.count = " + locations.count);
+                    for (var i=0; i<locations.count; ++i)
+                        console.debug("loc [lat=" + locations[i].latitude +
+                                      ", lng=" + locations[i].longitude +
+                                      ", alt=" + locations[i].altitude +
+                                      ", acc=" + locations[i].accuracy +
+                                      ", spd=" + locations[i].speed);
+                }
             }
         }
 

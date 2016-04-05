@@ -1,16 +1,21 @@
 #include <QApplication>
 #include <QQmlApplicationEngine>
+#include <QtQml>
 
 #include <QmlVlc.h>
 #include <QmlVlc/QmlVlcConfig.h>
 
 #include <QtWebEngine/qtwebengineglobal.h>
 
+#include <MetadataProvider/MetadataProvider.h>
+
 int main(int argc, char *argv[])
 {
     RegisterQmlVlc();
     QmlVlcConfig& config = QmlVlcConfig::instance();
     //config.enableDebug( true );
+
+    qmlRegisterType<MetadataProvider>("vmf3.demo.metadata", 1, 0, "MetadataProvider");
 
     QApplication app(argc, argv);
 

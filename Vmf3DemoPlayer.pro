@@ -5,7 +5,16 @@ QT += qml quick widgets webengine
 include(3dparty/QmlVlc/QmlVlc.pri)
 INCLUDEPATH += 3dparty
 
-SOURCES += main.cpp
+#== replace by cmake procedure
+INCLUDEPATH += ../vmf3-demo-player.vmf/include
+LIBS += -L../vmf3-demo-player.vmf/x64/lib -lvmfd
+#==
+
+SOURCES += main.cpp \
+    MetadataProvider/MetadataProvider.cpp
+
+HEADERS += \
+    MetadataProvider/MetadataProvider.h
 
 RESOURCES += qml.qrc
 
