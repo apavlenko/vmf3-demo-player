@@ -2,5 +2,6 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>map.html</file>
+        <file>VideoMetaWidget.qml</file>
     </qresource>
 </RCC>

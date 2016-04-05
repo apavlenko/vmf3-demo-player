@@ -21,13 +21,19 @@ ApplicationWindow {
     function drawObject()
     {
         var script = "drawObject(%1 , %2,  %3);\n";
-        var coord  = {lat : 37.235 + 0.01, lng : -115.811 + 0.02};
+        var coord  = {lat : 37.235 + 0.01 + Math.random()%0.001, lng : -115.811 + 0.01 + Math.random()%0.001};
         var rotate = 45;
         web.runJavaScript(script.arg(coord.lat).arg(coord.lng).arg(rotate));
     }
 
+    function removeObject()
+    {
+        web.runJavaScript("removeObject();\n");
+    }
+
     function drawRoute()
     {
+        removeRoute();
         var coord1  = {lat : 37.235, lng : -115.811};
         var coord2  = {lat : coord1.lat + 0.01, lng : coord1.lng - 0.02};
         var script = "";
@@ -35,14 +41,19 @@ ApplicationWindow {
         for(var i = 0; i < 25; i++)
         {
             var t = 1.0*i/24;
-            var lat = t*coord1.lat + (1.0-t)*coord2.lat;
-            var lng = t*coord1.lng + (1.0-t)*coord2.lng;
+            var lat = t*coord1.lat + (1.0-t)*coord2.lat + Math.random()%0.001;
+            var lng = t*coord1.lng + (1.0-t)*coord2.lng + Math.random()%0.001;
             script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
         }
         script += "];\n";
         script += "myColor = '#FF0000';\n";
         script += "drawRoute(myCoordinates, myColor);\n";
         web.runJavaScript(script);
+    }
+
+    function removeRoute()
+    {
+        web.runJavaScript("removePath();\n");
     }
 
     SplitView {
@@ -54,74 +65,89 @@ ApplicationWindow {
         Rectangle {
             Layout.minimumWidth: 320
             color: "green"
-                Text {
-                    text: "Video 1"
-                    anchors.centerIn: parent
-                }
-                VlcPlayer {
-                    id: vlcPlayer;
-                    mrl: "rtsp://192.168.10.218:3414";
-                }
-                VlcVideoSurface {
-                    id: vlcSurface;
-                    source: vlcPlayer;
-                    anchors.fill: parent;
-                }
+
+            VideoMetaWidget {
+                anchors.fill: parent
+                mrl: "rtsp://192.168.10.218:1234";
+                altText: "Video 1"
+            }
         }
+
         Rectangle {
             Layout.minimumWidth: 320
             color: "yellow"
-            Text {
-                text: "Video 2"
-                anchors.centerIn: parent
-            }
-            VlcPlayer {
-                id: vlcPlayer2;
-                mrl: "rtsp://192.168.10.190:1234";
-            }
-            VlcVideoSurface {
-                id: vlcVideoOut2;
-                source: vlcPlayer2;
-                anchors.fill: parent;
-            }
-        }
 
-        SplitView {
-            orientation: Qt.Vertical
-
-            Button {
-                text: "init"
-                onClicked: {
-                    initializeMap();
-                }
-            }
-            Button {
-                text : "draw object"
-                onClicked: {
-                    drawObject();
-                }
-            }
-            Button {
-                text : "draw route"
-                onClicked: {
-                    drawRoute();
-                }
+            VideoMetaWidget {
+                anchors.fill: parent
+                mrl: "rtsp://192.168.10.176:1234";
+                altText: "Video 2"
             }
         }
 
         Rectangle {
             Layout.fillWidth: true
             Layout.minimumWidth: 320
-            color: "red"
 
-            WebEngineView {
-                id: web
+            ColumnLayout {
+                spacing : 2
                 anchors.fill: parent
-                url: "map.html"
-            }
 
+                Rectangle {
+                    anchors.top : parent.top
+                    anchors.bottom: mapRowLayout.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+
+                    //Layout.fillHeight: true
+                    //Layout.fillWidth: true
+                    //Layout.alignment: Qt.AlignTop
+
+                    WebEngineView {
+                        id: web
+                        anchors.fill: parent
+                        url: "map.html"
+                        //url: "democss.html"
+                    }
+                }
+
+                RowLayout {
+                    id : mapRowLayout
+                    spacing : 2
+                    Layout.alignment: Qt.AlignBottom
+
+                    Button {
+                        text: "init"
+                        onClicked: {
+                            initializeMap();
+                        }
+                    }
+                    Button {
+                        text : "draw object"
+                        onClicked: {
+                            drawObject();
+                        }
+                    }
+                    Button {
+                        text : "draw route"
+                        onClicked: {
+                            drawRoute();
+                        }
+                    }
+                    Button {
+                        text : "remove object"
+                        onClicked: {
+                            removeObject();
+                        }
+                    }
+                    Button {
+                        text : "remove route"
+                        onClicked: {
+                            removeRoute();
+                        }
+                    }
+                }
+            }
         }
     }
-
 }
 
