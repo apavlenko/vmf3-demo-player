@@ -47,6 +47,30 @@ ApplicationWindow {
         web.runJavaScript(script);
     }
 
+    function drawVertex(coord1, coord2)
+    {
+        var script = "";
+        script += "myCoordinates = [\n";
+//        for(var i = 0; i < 25; i++)
+//        {
+//            var t = 1.0*i/24;
+        {
+            var lat = coord1.x;
+            var lng = coord1.y;
+            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+        }
+        {
+            var lat = coord2.x;
+            var lng = coord2.y;
+            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+        }
+//        }
+        script += "];\n";
+        script += "myColor = '#FF0000';\n";
+        script += "drawRoute(myCoordinates, myColor);\n";
+        web.runJavaScript(script);
+    }
+
     SplitView {
         anchors.fill: parent
         orientation: Qt.Horizontal
@@ -62,7 +86,7 @@ ApplicationWindow {
                 }
                 VlcPlayer {
                     id: vlcPlayer;
-                    mrl: "rtsp://192.168.10.218:3414";
+                    mrl: "rtsp://192.168.10.218:1234";
                 }
                 VlcVideoSurface {
                     id: vlcSurface;
@@ -89,14 +113,28 @@ ApplicationWindow {
             MetadataProvider {
                 id: mdprovider2;
                 address: "192.168.10.176:4321"
+//                address: "192.168.10.218:4321"
+                property var points : [];
                 onLocationsChanged: {
-                    console.debug("*** locations.count = " + locations.count);
-                    for (var i=0; i<locations.count; ++i)
-                        console.debug("loc [lat=" + locations[i].latitude +
-                                      ", lng=" + locations[i].longitude +
-                                      ", alt=" + locations[i].altitude +
-                                      ", acc=" + locations[i].accuracy +
-                                      ", spd=" + locations[i].speed);
+//                    console.debug("points.length = " + points.length);
+//                    console.debug("loc " + locations);
+                    console.debug("points.length = " + points.length + " [lat=" + locations.x + ", lng=" + locations.y + "]");
+//                    console.debug("*** locations.size = " + locations.size());
+//                    for (var i=0; i<10; ++i)
+//                        console.debug("loc " + locations[i]);
+////                        console.debug("loc [lat=" + locations[i].x + ", lng=" + locations[i].y);
+
+//                    var script = "drawObject(%1 , %2,  %3);\n";
+//                    var coord  = {lat : locations.x, lng : locations.y};
+//                    var rotate = 45;
+//                    web.runJavaScript(script.arg(coord.lat).arg(coord.lng).arg(rotate));
+
+                    points[points.length] = locations;
+                    if (points.length >= 2) {
+                        var p1 = points[points.length-2];
+                        var p2 = points[points.length-1];
+                        drawVertex(p1, p2);
+                    }
                 }
             }
         }

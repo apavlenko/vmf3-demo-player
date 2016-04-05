@@ -16,6 +16,9 @@ int main(int argc, char *argv[])
     //config.enableDebug( true );
 
     qmlRegisterType<MetadataProvider>("vmf3.demo.metadata", 1, 0, "MetadataProvider");
+    qRegisterMetaType<Location>();
+//    qRegisterMetaType<QList<Location*>>();
+//    qRegisterMetaType<QQmlListProperty<Location>>();
 
     QApplication app(argc, argv);
 
