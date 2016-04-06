@@ -7,6 +7,8 @@ import QtMultimedia 5.0
 
 import QtWebEngine 1.2
 
+import vmf3.demo.metadata 1.0
+
 ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
@@ -54,6 +56,26 @@ ApplicationWindow {
     function removeRoute()
     {
         web.runJavaScript("removePath();\n");
+    }
+
+    function drawVertex(coord1, coord2)
+    {
+        var script = "";
+        script += "myCoordinates = [\n";
+        {
+            var lat = coord1.x;
+            var lng = coord1.y;
+            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+        }
+        {
+            var lat = coord2.x;
+            var lng = coord2.y;
+            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+        }
+        script += "];\n";
+        script += "myColor = '#FF0000';\n";
+        script += "drawRoute(myCoordinates, myColor);\n";
+        web.runJavaScript(script);
     }
 
     SplitView {
