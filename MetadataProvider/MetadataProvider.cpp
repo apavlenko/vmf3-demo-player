@@ -288,15 +288,19 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
+                    metadata.clear();
                     c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
                     if (!(c.metadata > 0))
                         throw std::runtime_error("expected metadata not sent by server");
+                    int num = 0;
                     for (auto md : metadata)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
                         m_ms.add(md);
                         updateLocations();
+                        ++num;
                     }
+                    std::cerr << "*** MetadataProvider::execute() : points per message = " << num << std::endl;
                     emit metadataAdded();
 //                    emit locationsChanged(m_locations);
 //                    emit locationsChanged(QQmlListProperty<Location>(this, m_locations));
