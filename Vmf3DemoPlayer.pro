@@ -6,8 +6,10 @@ include(3dparty/QmlVlc/QmlVlc.pri)
 INCLUDEPATH += 3dparty
 
 #== replace by cmake procedure
-INCLUDEPATH += ../vmf3-demo-player.vmf/include
-LIBS += -L../vmf3-demo-player.vmf/x64/lib -lvmfd
+#INCLUDEPATH += ../vmf3-demo-player.vmf/include
+#LIBS += -L../vmf3-demo-player.vmf/x64/lib -lvmfd
+INCLUDEPATH += ../vmf-debug/install/include
+LIBS += -L../vmf-debug/install/x64/lib -lvmfd
 #==
 
 SOURCES += main.cpp \
