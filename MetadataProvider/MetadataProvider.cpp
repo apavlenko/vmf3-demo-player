@@ -82,6 +82,7 @@ MetadataProvider::MetadataProvider(QObject *parent)
     , m_exiting(false)
     , m_sock(-1)
 {
+    vmf::Log::setVerbosityLevel(vmf::LogLevel::LOG_ERROR);
 }
 
 MetadataProvider::~MetadataProvider()
