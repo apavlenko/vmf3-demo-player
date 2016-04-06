@@ -7,6 +7,8 @@ import QtMultimedia 5.0
 
 import QtWebEngine 1.2
 
+import vmf3.demo.metadata 1.0
+
 ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
@@ -45,6 +47,26 @@ ApplicationWindow {
         web.runJavaScript(script);
     }
 
+    function drawVertex(coord1, coord2)
+    {
+        var script = "";
+        script += "myCoordinates = [\n";
+        {
+            var lat = coord1.x;
+            var lng = coord1.y;
+            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+        }
+        {
+            var lat = coord2.x;
+            var lng = coord2.y;
+            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+        }
+        script += "];\n";
+        script += "myColor = '#FF0000';\n";
+        script += "drawRoute(myCoordinates, myColor);\n";
+        web.runJavaScript(script);
+    }
+
     SplitView {
         anchors.fill: parent
         orientation: Qt.Horizontal
@@ -60,7 +82,7 @@ ApplicationWindow {
                 }
                 VlcPlayer {
                     id: vlcPlayer;
-                    mrl: "rtsp://192.168.10.218:3414";
+                    mrl: "rtsp://192.168.10.218:1234";
                 }
                 VlcVideoSurface {
                     id: vlcSurface;
@@ -77,12 +99,25 @@ ApplicationWindow {
             }
             VlcPlayer {
                 id: vlcPlayer2;
-                mrl: "rtsp://192.168.10.190:1234";
+                mrl: "rtsp://192.168.10.176:1234";
             }
             VlcVideoSurface {
                 id: vlcVideoOut2;
                 source: vlcPlayer2;
                 anchors.fill: parent;
+            }
+            MetadataProvider {
+                id: mdprovider2;
+                address: "192.168.10.176:4321"
+                property var points : [];
+                onLocationsChanged: {
+                    points[points.length] = locations;
+                    if (points.length >= 2) {
+                        var p1 = points[points.length-2];
+                        var p2 = points[points.length-1];
+                        drawVertex(p1, p2);
+                    }
+                }
             }
         }
 
@@ -99,6 +134,8 @@ ApplicationWindow {
                 text : "draw object"
                 onClicked: {
                     drawObject();
+                    console.debug("mouse2 clicked");
+                    mdprovider2.start();
                 }
             }
             Button {
