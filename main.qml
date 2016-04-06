@@ -68,8 +68,8 @@ ApplicationWindow {
 
             VideoMetaWidget {
                 anchors.fill: parent
-                mrl: "rtsp://192.168.10.218:1234";
-                altText: "Video 1"
+                //mrl: "rtsp://192.168.10.218:1234";
+                ip: "192.168.10.218"
             }
         }
 
@@ -79,8 +79,8 @@ ApplicationWindow {
 
             VideoMetaWidget {
                 anchors.fill: parent
-                mrl: "rtsp://192.168.10.176:1234";
-                altText: "Video 2"
+                //mrl: "rtsp://192.168.10.176:1234";
+                ip: "192.168.10.176"
             }
         }
 
