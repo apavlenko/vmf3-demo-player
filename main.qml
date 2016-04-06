@@ -35,14 +35,14 @@ ApplicationWindow {
     {
         removeRoute();
         var coord1  = {lat : 37.235, lng : -115.811};
-        var coord2  = {lat : coord1.lat + 0.01, lng : coord1.lng - 0.02};
+        var coord2  = {lat : coord1.lat + Math.random()%0.005, lng : coord1.lng - Math.random()%0.005};
         var script = "";
         script += "myCoordinates = [\n";
         for(var i = 0; i < 25; i++)
         {
             var t = 1.0*i/24;
-            var lat = t*coord1.lat + (1.0-t)*coord2.lat + Math.random()%0.001;
-            var lng = t*coord1.lng + (1.0-t)*coord2.lng + Math.random()%0.001;
+            var lat = t*coord1.lat + (1.0-t)*coord2.lat;
+            var lng = t*coord1.lng + (1.0-t)*coord2.lng;
             script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
         }
         script += "];\n";
