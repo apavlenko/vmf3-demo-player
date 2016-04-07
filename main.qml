@@ -13,69 +13,96 @@ ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
 
-    function initializeMap()
+    property var paths : [ [], [] ]
+
+    function initializeMap(coord)
     {
-        var coord  = {lat : 37.235, lng : -115.811};
         var script = "map.setCenter(new google.maps.LatLng(%1,%2));\n";
         web.runJavaScript(script.arg(coord.lat).arg(coord.lng));
     }
 
-    function drawObject()
+    function getRotation(fromPt, toPt)
     {
-        var script = "drawObject(%1 , %2,  %3);\n";
-        var coord  = {lat : 37.235 + 0.01 + Math.random()%0.001, lng : -115.811 + 0.01 + Math.random()%0.001};
-        var rotate = 45;
-        web.runJavaScript(script.arg(coord.lat).arg(coord.lng).arg(rotate));
+        var dx = toPt.x - fromPt.x
+        var dy = toPt.y - fromPt.y
+
+        if (dx == 0 && dy == 0)
+            return 0;
+        else if (dx == 0)
+            return dy > 0 ? 90 : 270;
+
+        var rotate = Math.atan2(dy, dx)*180/Math.PI;
+
+        return rotate >= 0 ? rotate : rotate + 360;
     }
 
-    function removeObject()
+    function drawObject(nObject)
     {
-        web.runJavaScript("removeObject();\n");
-    }
-
-    function drawRoute()
-    {
-        removeRoute();
-        var coord1  = {lat : 37.235, lng : -115.811};
-        var coord2  = {lat : coord1.lat + Math.random()%0.005, lng : coord1.lng - Math.random()%0.005};
-        var script = "";
-        script += "myCoordinates = [\n";
-        for(var i = 0; i < 25; i++)
+        hideObject(nObject)
+        var script = "drawObject(%1, %2, %3, %4, %5);\n";
+        var len = paths[nObject].length
+        if(len > 0)
         {
-            var t = 1.0*i/24;
-            var lat = t*coord1.lat + (1.0-t)*coord2.lat;
-            var lng = t*coord1.lng + (1.0-t)*coord2.lng;
-            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+            var toPt = paths[nObject][len-1]
+            var fromPt = toPt;
+            if(len >= 2)
+                fromPt = paths[nObject][len-2]
+
+            var lat = toPt.x
+            var lng = toPt.y
+            var rotate = getRotation(fromPt, toPt)
+            var colorStr = ""
+            if(nObject === 0)
+                colorStr = "'red'"
+            else
+                colorStr = "'blue'"
+            web.runJavaScript(script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject));
+
+            console.log(script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject))
         }
-        script += "];\n";
-        script += "myColor = '#FF0000';\n";
-        script += "drawRoute(myCoordinates, myColor);\n";
-        web.runJavaScript(script);
     }
 
-    function removeRoute()
+    function hideObject(nObject)
     {
-        web.runJavaScript("removePath();\n");
+        web.runJavaScript("removeObject(%1);\n".arg(nObject));
     }
 
-    function drawVertex(coord1, coord2)
+    function drawRoute(nPath)
     {
-        var script = "";
-        script += "myCoordinates = [\n";
+        web.runJavaScript("removePath(%1);\n".arg(nPath))
+        var len = paths[nPath].length
+        if(len >= 2)
         {
-            var lat = coord1.x;
-            var lng = coord1.y;
-            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+            var script = "";
+            script += "myCoordinates = [\n";
+            for(var i = 0; i < len; i++)
+            {
+                var lat = paths[nPath][i].x
+                var lng = paths[nPath][i].y
+                script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+            }
+            script += "];\n";
+            var colorStr = ""
+            if(nPath === 0)
+                colorStr = "#FF0000"
+            else
+                colorStr = "#0000FF"
+            script += "myColor = '" + colorStr + "';\n";
+            script += "nPath = '" + nPath + "';\n";
+            script += "drawRoute(myCoordinates, myColor, nPath);\n";
+            web.runJavaScript(script);
         }
-        {
-            var lat = coord2.x;
-            var lng = coord2.y;
-            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
-        }
-        script += "];\n";
-        script += "myColor = '#FF0000';\n";
-        script += "drawRoute(myCoordinates, myColor);\n";
-        web.runJavaScript(script);
+    }
+
+    function removeRoute(nPath)
+    {
+        paths[nPath] = []
+        web.runJavaScript("removePath(%1);\n".arg(nPath))
+    }
+
+    function addToPath(nPath, location)
+    {
+        paths[nPath].push(location);
     }
 
     SplitView {
@@ -86,23 +113,39 @@ ApplicationWindow {
 
         Rectangle {
             Layout.minimumWidth: 320
-            color: "green"
+            color: "red"
 
             VideoMetaWidget {
                 anchors.fill: parent
+                anchors.margins: 5
                 //mrl: "rtsp://192.168.10.218:1234";
                 ip: "192.168.10.218"
+                onLocationChanged: {
+                    paths[0].push(newPt);
+                    drawRoute(0)
+                    drawObject(0)
+                }
+                onStarted: { }
+                onStopped: removeRoute(0)
             }
         }
 
         Rectangle {
             Layout.minimumWidth: 320
-            color: "yellow"
+            color: "blue"
 
             VideoMetaWidget {
                 anchors.fill: parent
+                anchors.margins: 5
                 //mrl: "rtsp://192.168.10.176:1234";
                 ip: "192.168.10.176"
+                onLocationChanged: {
+                    paths[1].push(newPt);
+                    drawRoute(1)
+                    drawObject(1)
+                }
+                onStarted: { }
+                onStopped: removeRoute(1)
             }
         }
 
@@ -128,7 +171,6 @@ ApplicationWindow {
                         id: web
                         anchors.fill: parent
                         url: "map.html"
-                        //url: "democss.html"
                     }
                 }
 
@@ -138,33 +180,29 @@ ApplicationWindow {
                     Layout.alignment: Qt.AlignBottom
 
                     Button {
-                        text: "init"
+                        text : "remove routes"
                         onClicked: {
-                            initializeMap();
+                            removeRoute(0);
+                            removeRoute(1);
+                        }
+                    }
+                    //temporary buttons, will be removed in future
+                    Button {
+                        text: "go route 0"
+                        onClicked: {
+                            paths[0].push({x:   37.387635 + Math.random()%0.01,
+                                           y: -121.963427 + Math.random()%0.01});
+                            drawRoute(0)
+                            drawObject(0)
                         }
                     }
                     Button {
-                        text : "draw object"
+                        text: "go route 1"
                         onClicked: {
-                            drawObject();
-                        }
-                    }
-                    Button {
-                        text : "draw route"
-                        onClicked: {
-                            drawRoute();
-                        }
-                    }
-                    Button {
-                        text : "remove object"
-                        onClicked: {
-                            removeObject();
-                        }
-                    }
-                    Button {
-                        text : "remove route"
-                        onClicked: {
-                            removeRoute();
+                            paths[1].push({x:   37.387635 + Math.random()%0.01,
+                                           y: -121.963427 + Math.random()%0.01});
+                            drawRoute(1)
+                            drawObject(1)
                         }
                     }
                 }
