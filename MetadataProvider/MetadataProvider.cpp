@@ -145,16 +145,20 @@ bool MetadataProvider::putAddress(const QString& address)
 
 void MetadataProvider::start()
 {
+    std::cerr << "*** MetadataProvider::start()" << std::endl;
     if (!m_working)
     {
+        std::cerr << "*** MetadataProvider::start() : start worker" << std::endl;
         m_worker = std::thread(&MetadataProvider::execute, this);
     }
 }
 
 void MetadataProvider::stop()
 {
+    std::cerr << "*** MetadataProvider::stop()" << std::endl;
     if (m_working)
     {
+        std::cerr << "*** MetadataProvider::stop() : stop worker" << std::endl;
         m_exiting = true;
         m_worker.join();
         m_working = false;
@@ -226,11 +230,14 @@ void MetadataProvider::disconnect()
 
 void MetadataProvider::execute()
 {
+    std::cerr << "*** MetadataProvider::execute()" << std::endl;
     try
     {
         m_working = true;
 
+        std::cerr << "*** MetadataProvider::execute() : trying to connect" << std::endl;
         ConnectionLock connection(this);
+        std::cerr << "*** MetadataProvider::execute() : connect : " << (connection.isSuccessful() ? "SUCC" : "FAIL") << std::endl;
         if (connection.isSuccessful())
         {
             vmf::FormatXML xml;
@@ -294,6 +301,7 @@ void MetadataProvider::execute()
                         updateLocations();
                         ++num;
                     }
+                    std::cerr << "*** MetadataProvider::execute() : points per message = " << num << std::endl;
                     emit metadataAdded();
 //                    emit locationsChanged(m_locations);
 //                    emit locationsChanged(QQmlListProperty<Location>(this, m_locations));
@@ -306,6 +314,7 @@ void MetadataProvider::execute()
     {
         std::cerr << "[MetadataProvider] EXCEPTION: " << e.what() << std::endl;
     }
+    std::cerr << "*** MetadataProvider::execute() ***" << std::endl;
 }
 
 //QList<Location> MetadataProvider::locations() const
