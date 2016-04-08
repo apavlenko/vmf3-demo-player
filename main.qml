@@ -57,8 +57,6 @@ ApplicationWindow {
             else
                 colorStr = "'blue'"
             web.runJavaScript(script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject));
-
-            console.log(script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject))
         }
     }
 
@@ -118,15 +116,16 @@ ApplicationWindow {
             VideoMetaWidget {
                 anchors.fill: parent
                 anchors.margins: 5
-                //mrl: "rtsp://192.168.10.218:1234";
-                ip: "192.168.10.218"
+                ip: "192.168.10.190"
                 onLocationChanged: {
                     paths[0].push(newPt);
                     drawRoute(0)
                     drawObject(0)
                 }
                 onStarted: { }
-                onStopped: removeRoute(0)
+                onStopped: {
+                    removeRoute(0); hideObject(0);
+                }
             }
         }
 
@@ -137,7 +136,6 @@ ApplicationWindow {
             VideoMetaWidget {
                 anchors.fill: parent
                 anchors.margins: 5
-                //mrl: "rtsp://192.168.10.176:1234";
                 ip: "192.168.10.176"
                 onLocationChanged: {
                     paths[1].push(newPt);
@@ -145,7 +143,9 @@ ApplicationWindow {
                     drawObject(1)
                 }
                 onStarted: { }
-                onStopped: removeRoute(1)
+                onStopped: {
+                    removeRoute(1); hideObject(1);
+                }
             }
         }
 
@@ -182,27 +182,8 @@ ApplicationWindow {
                     Button {
                         text : "remove routes"
                         onClicked: {
-                            removeRoute(0);
-                            removeRoute(1);
-                        }
-                    }
-                    //temporary buttons, will be removed in future
-                    Button {
-                        text: "go route 0"
-                        onClicked: {
-                            paths[0].push({x:   37.387635 + Math.random()%0.01,
-                                           y: -121.963427 + Math.random()%0.01});
-                            drawRoute(0)
-                            drawObject(0)
-                        }
-                    }
-                    Button {
-                        text: "go route 1"
-                        onClicked: {
-                            paths[1].push({x:   37.387635 + Math.random()%0.01,
-                                           y: -121.963427 + Math.random()%0.01});
-                            drawRoute(1)
-                            drawObject(1)
+                            removeRoute(0); hideObject(0);
+                            removeRoute(1); hideObject(1);
                         }
                     }
                 }
