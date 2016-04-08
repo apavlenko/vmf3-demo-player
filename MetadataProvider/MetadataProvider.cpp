@@ -18,7 +18,7 @@
 #include <sstream>
 #include <stdexcept>
 
-#define USE_NATIVE_ENDIAN
+//#define USE_NATIVE_ENDIAN
 #define USE_SIZES_ON_HANDSHAKE
 
 #if defined(USE_NATIVE_ENDIAN)
