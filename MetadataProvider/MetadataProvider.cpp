@@ -149,6 +149,7 @@ void MetadataProvider::start()
     if (!m_working)
     {
         std::cerr << "*** MetadataProvider::start() : start worker" << std::endl;
+        m_exiting = false;
         m_worker = std::thread(&MetadataProvider::execute, this);
     }
 }
@@ -162,6 +163,7 @@ void MetadataProvider::stop()
         m_exiting = true;
         m_worker.join();
         m_working = false;
+        m_ms.clear();
         disconnect();
     }
 }
@@ -261,7 +263,10 @@ void MetadataProvider::execute()
                     for (auto segment : segments)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
-                        m_ms.addVideoSegment(segment);
+                        if(m_ms.getAllVideoSegments().size() == 0)
+                        {
+                            m_ms.addVideoSegment(segment);
+                        }
                     }
                     emit segmentAdded();
                 }
@@ -278,7 +283,10 @@ void MetadataProvider::execute()
                     for (auto schema : schemas)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
-                        m_ms.addSchema(schema);
+                        if(!m_ms.getSchema(schema->getName()))
+                        {
+                            m_ms.addSchema(schema);
+                        }
                     }
                     emit schemaAdded();
                 }
@@ -297,6 +305,7 @@ void MetadataProvider::execute()
                     for (auto md : metadata)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
+                        md.id = vmf::INVALID_ID;
                         m_ms.add(md);
                         updateLocations();
                         ++num;
