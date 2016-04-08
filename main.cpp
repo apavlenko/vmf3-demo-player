@@ -13,7 +13,7 @@ int main(int argc, char *argv[])
 {
     RegisterQmlVlc();
     QmlVlcConfig& config = QmlVlcConfig::instance();
-    //config.enableDebug( true );
+    config.enableDebug( false );
 
     qmlRegisterType<MetadataProvider>("vmf3.demo.metadata", 1, 0, "MetadataProvider");
     qRegisterMetaType<Location>();
