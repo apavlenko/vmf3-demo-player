@@ -242,7 +242,8 @@ void MetadataProvider::execute()
         std::cerr << "*** MetadataProvider::execute() : connect : " << (connection.isSuccessful() ? "SUCC" : "FAIL") << std::endl;
         if (connection.isSuccessful())
         {
-            vmf::FormatXML xml;
+            std::shared_ptr<vmf::FormatXML> f = std::make_shared<vmf::FormatXML>();
+            vmf::FormatCompressed xml(f, "com.intel.vmf.compressor.zlib");
 //            std::vector<std::shared_ptr<vmf::MetadataInternal>> metadata;
             std::vector<vmf::MetadataInternal> metadata;
             std::vector<std::shared_ptr<vmf::MetadataSchema>> schemas;
