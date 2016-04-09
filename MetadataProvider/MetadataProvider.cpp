@@ -164,6 +164,7 @@ void MetadataProvider::stop()
         m_worker.join();
         m_working = false;
         m_ms.clear();
+        m_locations.clear();
         disconnect();
     }
 }
@@ -298,6 +299,8 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
+                    std::cerr << std::string(buf) << std::endl;
+
                     metadata.clear();
                     c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
                     if (!(c.metadata > 0))
@@ -306,16 +309,13 @@ void MetadataProvider::execute()
                     for (auto md : metadata)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
-                        md.id = vmf::INVALID_ID;
+                        //md.id = vmf::INVALID_ID;
                         m_ms.add(md);
-                        updateLocations();
                         ++num;
                     }
+                    updateLocations();
                     std::cerr << "*** MetadataProvider::execute() : points per message = " << num << std::endl;
                     emit metadataAdded();
-//                    emit locationsChanged(m_locations);
-//                    emit locationsChanged(QQmlListProperty<Location>(this, m_locations));
-//                    emit locationsChanged(QPointF(135.7, -97.13));
                 }
             }
         }
@@ -327,16 +327,11 @@ void MetadataProvider::execute()
     std::cerr << "*** MetadataProvider::execute() ***" << std::endl;
 }
 
-//QList<Location> MetadataProvider::locations() const
-//QQmlListProperty<Location> MetadataProvider::locations()
-//QString MetadataProvider::locations()
-QPointF MetadataProvider::locations() const
-//QList<QPointF> MetadataProvider::locations() const
+
+QQmlListProperty<Location> MetadataProvider::locations()
 {
-//    std::unique_lock< std::mutex > lock( m_lock );
-//    return QQmlListProperty<Location>(this, m_locations);
-//    return QString(">>= location(s)");
-    return QPointF(-135.7, 97.13);
+    std::unique_lock< std::mutex > lock( m_lock );
+    return QQmlListProperty<Location>(this, m_locations);
 }
 
 double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const std::string& name)
@@ -357,27 +352,24 @@ double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const 
 
 void MetadataProvider::updateLocations()
 {
+    std::cerr << "*** MetadataProvider::updateLocations()" << std::endl;
+
     vmf::MetadataSet ms = m_ms.getAll();
 
-    for(int i = (int)m_locations.size(); i < (int)ms.size(); ++i)
+    std::sort(ms.begin(), ms.end(), [](std::shared_ptr<vmf::Metadata> a, std::shared_ptr<vmf::Metadata> b) -> bool{
+        return (a->getId() < b->getId());
+    });
+
+    m_locations.clear();
+    for(std::shared_ptr<vmf::Metadata> md : ms)
     {
-        std::shared_ptr<vmf::Metadata> md = ms[i];
-
-//        Location* loc = new Location;
-        QPointF loc;
-
-//        loc->setLatitude(getFieldValue(md, "latitude"));
-//        loc->setLongitude(getFieldValue(md, "longitude"));
-//        loc.setAltitude(getFieldValue(md, "altitude"));
-//        loc.setAccuracy(getFieldValue(md, "accuracy"));
-//        loc.setSpeed(getFieldValue(md, "speed"));
-
-        loc.setX(getFieldValue(md, "latitude"));
-        loc.setY(getFieldValue(md, "longitude"));
-
-//        m_locations.push_back(loc);
-        m_locations.push_back(loc);
-        emit locationsChanged(loc);
+        Location* loc = new Location();
+        loc->setLatitude( getFieldValue(md, "latitude"));
+        loc->setLongitude(getFieldValue(md, "longitude"));
+        m_locations.append(loc);
     }
+
+    QQmlListProperty<Location> propList = QQmlListProperty<Location>(this, m_locations);
+    emit locationsChanged(propList);
 }
 

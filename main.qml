@@ -13,7 +13,7 @@ ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
 
-    property var paths : [ [], [] ]
+    property variant paths : [ [], [] ]
 
     function initializeMap(coord)
     {
@@ -48,15 +48,19 @@ ApplicationWindow {
             if(len >= 2)
                 fromPt = paths[nObject][len-2]
 
-            var lat = toPt.x
-            var lng = toPt.y
-            var rotate = getRotation(fromPt, toPt)
+            var lat = toPt.latitude
+            var lng = toPt.longitude
+            var rotate = getRotation({x: fromPt.latitude, y: fromPt.longitude},
+                                     {x:   toPt.latitude, y:   toPt.longitude})
             var colorStr = ""
             if(nObject === 0)
                 colorStr = "'red'"
             else
                 colorStr = "'blue'"
-            web.runJavaScript(script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject));
+            script = script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject)
+            web.runJavaScript(script);
+
+            console.log(script);
         }
     }
 
@@ -75,8 +79,8 @@ ApplicationWindow {
             script += "myCoordinates = [\n";
             for(var i = 0; i < len; i++)
             {
-                var lat = paths[nPath][i].x
-                var lng = paths[nPath][i].y
+                var lat = paths[nPath][i].latitude
+                var lng = paths[nPath][i].longitude
                 script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
             }
             script += "];\n";
@@ -86,7 +90,7 @@ ApplicationWindow {
             else
                 colorStr = "#0000FF"
             script += "myColor = '" + colorStr + "';\n";
-            script += "nPath = '" + nPath + "';\n";
+            script += "nPath = " + nPath + ";\n";
             script += "drawRoute(myCoordinates, myColor, nPath);\n";
             web.runJavaScript(script);
         }
@@ -96,11 +100,6 @@ ApplicationWindow {
     {
         paths[nPath] = []
         web.runJavaScript("removePath(%1);\n".arg(nPath))
-    }
-
-    function addToPath(nPath, location)
-    {
-        paths[nPath].push(location);
     }
 
     SplitView {
@@ -116,9 +115,10 @@ ApplicationWindow {
             VideoMetaWidget {
                 anchors.fill: parent
                 anchors.margins: 5
-                ip: "192.168.10.190"
-                onLocationChanged: {
-                    paths[0].push(newPt);
+                //ip: "192.168.10.190"
+                ip: "192.168.10.218"
+                onTrajectoryChanged: {
+                    paths[0] = trajectory
                     drawRoute(0)
                     drawObject(0)
                 }
@@ -137,8 +137,8 @@ ApplicationWindow {
                 anchors.fill: parent
                 anchors.margins: 5
                 ip: "192.168.10.176"
-                onLocationChanged: {
-                    paths[1].push(newPt);
+                onTrajectoryChanged: {
+                    paths[1] = trajectory
                     drawRoute(1)
                     drawObject(1)
                 }

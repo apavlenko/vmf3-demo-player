@@ -9,7 +9,8 @@ import vmf3.demo.metadata 1.0
 
 Rectangle {
     property string ip
-    signal locationChanged(point newPt)
+    property bool playing : false
+    signal trajectoryChanged(variant trajectory)
     signal started()
     signal stopped()
 
@@ -34,8 +35,16 @@ Rectangle {
         console.debug("ip="+ip)
     }
 
+    function togglePlaying()
+    {
+        if(!playing)
+            start()
+        else
+            stop()
+    }
+
     //start sequence is the following:
-    //start() => vlcPlayer.onMediaPlayerPlaying() => startMetadata() => emit started()
+    //start() => vlcPlayer.onMediaPlayerPlaying() => playerStarted() => emit started()
     function start()
     {
         console.debug("start")
@@ -46,13 +55,15 @@ Rectangle {
         vlcPlayer.play()
     }
 
-    function startMetadata()
+    function playerStarted()
     {
         mdProvider.stop()
         mdProvider.address = getVMFaddr(ip)
         mdProvider.start()
         //emit signal
         started()
+        startStopButton.text = "Stop"
+        playing = true
     }
 
     function stop()
@@ -61,6 +72,8 @@ Rectangle {
         videoLabel.text = "Stopped"
         vlcPlayer.stop()
         mdProvider.stop()
+        startStopButton.text = "Start"
+        playing = false
         //emit signal
         stopped()
     }
@@ -76,8 +89,8 @@ Rectangle {
 
         Rectangle {
             id: videoPanel
-            //Layout.preferredHeight:
-            Layout.fillHeight: true
+            Layout.minimumHeight: 120
+            //Layout.fillHeight: true
             Text {
                 id: videoLabel
                 text: "No video"
@@ -85,9 +98,7 @@ Rectangle {
             }
             VlcPlayer {
                 id: vlcPlayer;
-                onMediaPlayerPlaying: {
-                    startMetadata();
-                }
+                onMediaPlayerPlaying: playerStarted();
             }
             VlcVideoSurface {
                 id: vlcSurface;
@@ -99,6 +110,7 @@ Rectangle {
         Rectangle {
             id: buttonsPanel
             Layout.minimumHeight: 30
+            Layout.maximumHeight: 30
 
             RowLayout {
                 anchors.fill: parent
@@ -122,16 +134,10 @@ Rectangle {
                     }
                 }
                 Button {
-                    id: startButton
+                    id: startStopButton
                     width: 25
                     text: "Start"
-                    onClicked: start()
-                }
-                Button {
-                    id: stopButton
-                    width: 25
-                    text: "Stop"
-                    onClicked: stop()
+                    onClicked: togglePlaying()
                 }
             }
         }
@@ -139,6 +145,7 @@ Rectangle {
         Rectangle {
             id: infoPanel
             Layout.minimumHeight: 75
+            Layout.fillHeight: true
             Layout.alignment: Qt.AlignBottom
             Text {
                 text: "Info panel"
@@ -147,7 +154,11 @@ Rectangle {
             MetadataProvider {
                 id: mdProvider;
                 onLocationsChanged: {
-                    locationChanged(locations);
+                    videoPanel.width  = vlcPlayer.video.width
+                    videoPanel.height = vlcPlayer.video.height
+
+                    trajectoryChanged(mdProvider.locations);
+                    //trajectoryChanged(locations);
                 }
             }
 

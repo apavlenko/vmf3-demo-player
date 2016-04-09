@@ -11,9 +11,10 @@
 #include <mutex>
 #include <thread>
 
-class Location
+class Location : public QObject
 {
-    Q_GADGET
+    //Q_GADGET
+    Q_OBJECT
 
     Q_PROPERTY(double latitude READ latitude WRITE setLatitude)
     Q_PROPERTY(double longitude READ longitude WRITE setLongitude)
@@ -22,6 +23,17 @@ class Location
 //    Q_PROPERTY(double speed READ speed WRITE setSpeed)
 
 public:
+    explicit Location(QObject* parent = 0) :
+        QObject(parent), m_latitude(0.0), m_longitude(0.0)
+    { }
+
+    Location(const Location& l) :
+        QObject(l.parent()), m_latitude(l.m_latitude), m_longitude(l.m_longitude)
+    { }
+
+    ~Location()
+    { }
+
     double latitude() const { return m_latitude; }
     void setLatitude(double latitude) { m_latitude = latitude; }
 
@@ -46,6 +58,7 @@ private:
 };
 
 Q_DECLARE_METATYPE(Location)
+Q_DECLARE_METATYPE(QQmlListProperty<Location>)
 
 class MetadataProvider : public QObject
 {
@@ -53,9 +66,9 @@ class MetadataProvider : public QObject
 
     Q_PROPERTY(QString address READ address WRITE setAddress NOTIFY addressChanged)
 //    Q_PROPERTY(QList<Location> locations READ locations NOTIFY locationsChanged)
-//    Q_PROPERTY(QQmlListProperty<Location> locations READ locations NOTIFY locationsChanged)
+    Q_PROPERTY(QQmlListProperty<Location> locations READ locations NOTIFY locationsChanged)
 //    Q_PROPERTY(QString locations READ locations NOTIFY locationsChanged)
-    Q_PROPERTY(QPointF locations READ locations NOTIFY locationsChanged)
+//    Q_PROPERTY(QPointF locations READ locations NOTIFY locationsChanged)
 //    Q_PROPERTY(QList<QPointF> locations READ locations NOTIFY locationsChanged)
 
 public:
@@ -66,9 +79,9 @@ public:
     void setAddress(const QString& address);
 
 //    QList<Location> locations() const;
-//    QQmlListProperty<Location> locations();
+    QQmlListProperty<Location> locations();
 //    QString locations();
-    QPointF locations() const;
+    //QPointF locations() const;
 //    QList<QPointF> locations() const;
 
 signals:
@@ -76,9 +89,9 @@ signals:
     void segmentAdded();
     void schemaAdded();
     void metadataAdded();
-//    void locationsChanged(QQmlListProperty<Location> locations);
+    void locationsChanged(QQmlListProperty<Location> locations);
 //    void locationsChanged(QString locations);
-    void locationsChanged(QPointF locations);
+//    void locationsChanged(QPointF locations);
 //    void locationsChanged(QList<Location> locations);
 
 public slots:
@@ -104,8 +117,9 @@ private:
     int m_sock;
 
     vmf::MetadataStream m_ms;
-//    QList<Location*> m_locations;
-    std::vector<QPointF> m_locations;
+    QList<Location*> m_locations;
+//    QQmlListProperty<Location> m_locations;
+//    std::vector<QPointF> m_locations;
 //    QList<QPointF> m_locations;
     mutable std::mutex m_lock;
 
