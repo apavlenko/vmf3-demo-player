@@ -81,12 +81,16 @@ MetadataProvider::MetadataProvider(QObject *parent)
     , m_working(false)
     , m_exiting(false)
     , m_sock(-1)
+    , m_wrappingInfo(new WrappingInfo())
+    , m_statInfo(new StatInfo())
 {
     vmf::Log::setVerbosityLevel(vmf::LogLevel::LOG_ERROR);
 }
 
 MetadataProvider::~MetadataProvider()
 {
+    delete m_wrappingInfo;
+    delete m_statInfo;
     stop();
 }
 
@@ -244,8 +248,15 @@ void MetadataProvider::execute()
         if (connection.isSuccessful())
         {
             std::shared_ptr<vmf::FormatXML> f = std::make_shared<vmf::FormatXML>();
-            vmf::FormatCompressed xml(f, "com.intel.vmf.compressor.zlib");
-//            std::vector<std::shared_ptr<vmf::MetadataInternal>> metadata;
+
+            //actual compressor ID will be recognized at parse() call, but should be the following
+            {
+                std::unique_lock< std::mutex > lock( m_lock );
+                m_wrappingInfo->setCompressionID("com.intel.vmf.compressor.zlib");
+            }
+
+            vmf::FormatCompressed parser(f, m_wrappingInfo->compressionID().toStdString());
+
             std::vector<vmf::MetadataInternal> metadata;
             std::vector<std::shared_ptr<vmf::MetadataSchema>> schemas;
             std::vector<std::shared_ptr<vmf::MetadataStream::VideoSegment>> segments;
@@ -259,7 +270,7 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
-                    c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, attribs);
                     if (!(c.segments > 0))
                         throw std::runtime_error("expected video segment(s) not sent by server");
                     for (auto segment : segments)
@@ -279,7 +290,7 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
-                    c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, attribs);
                     if (!(c.schemas > 0))
                         throw std::runtime_error("expected video schema(s) not sent by server");
                     for (auto schema : schemas)
@@ -302,7 +313,7 @@ void MetadataProvider::execute()
                     std::cerr << std::string(buf) << std::endl;
 
                     metadata.clear();
-                    c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, attribs);
                     if (!(c.metadata > 0))
                         throw std::runtime_error("expected metadata not sent by server");
                     int num = 0;
@@ -332,6 +343,18 @@ QQmlListProperty<Location> MetadataProvider::locations()
 {
     std::unique_lock< std::mutex > lock( m_lock );
     return QQmlListProperty<Location>(this, m_locations);
+}
+
+WrappingInfo* MetadataProvider::wrappingInfo()
+{
+    std::unique_lock< std::mutex > lock( m_lock );
+    return m_wrappingInfo;
+}
+
+StatInfo* MetadataProvider::statInfo()
+{
+    std::unique_lock< std::mutex > lock( m_lock );
+    return m_statInfo;
 }
 
 double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const std::string& name)

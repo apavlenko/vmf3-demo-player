@@ -74,6 +74,14 @@ Rectangle {
         vlcPlayer.stop()
         mdProvider.stop()
         startStopButton.text = "Start"
+
+        compressorIdLabel.text  = "(None)"
+        encryptionPwdLabel.text = "(None)"
+        countLabel.text   = "(None)"
+        minLatLabel.text  = "(None)"
+        avgLatLabel.text  = "(None)"
+        lastLatLabel.text = "(None)"
+
         playing = false
         //emit signal
         stopped()
@@ -158,23 +166,119 @@ Rectangle {
             Layout.minimumHeight: 75
             Layout.fillHeight: true
             Layout.alignment: Qt.AlignBottom
-            Text {
-                text: "Info panel"
+
+            GridLayout {
+                columns: 2
+                anchors.fill: parent
+
+                Text {
+                    text: "Wrapping info"
+                    font.bold: true
+                    Layout.row: 0
+                    Layout.column: 0
+                }
+
+                Text {
+                    text: "compressor ID: "
+                    Layout.row: 1
+                    Layout.column: 0
+                }
+
+                Text {
+                    id: compressorIdLabel
+                    font.italic: true
+                    Layout.row: 1
+                    Layout.column: 1
+                    text: "(None)"
+                }
+
+                Text {
+                    text: "encryption passphrase: "
+                    Layout.row: 2
+                    Layout.column: 0
+                }
+
+                Text {
+                    id: encryptionPwdLabel
+                    font.italic: true
+                    Layout.row: 2
+                    Layout.column: 1
+                    text: "(None)"
+                }
+
+                Text {
+                    text: "Stat info"
+                    font.bold: true
+                    Layout.row: 3
+                    Layout.column: 0
+                }
+
+                Text {
+                    text: "count: "
+                    Layout.row: 4
+                    Layout.column: 0
+                }
+
+                Text {
+                    id: countLabel
+                    Layout.row: 4
+                    Layout.column: 1
+                    text: "(None)"
+                }
+
+                Text {
+                    text: "min Lat: "
+                    Layout.row: 5
+                    Layout.column: 0
+                }
+
+                Text {
+                    id: minLatLabel
+                    Layout.row: 5
+                    Layout.column: 1
+                    text: "(None)"
+                }
+
+                Text {
+                    text: "avg Lat: "
+                    Layout.row: 6
+                    Layout.column: 0
+                }
+
+                Text {
+                    id: avgLatLabel
+                    Layout.row: 6
+                    Layout.column: 1
+                    text: "(None)"
+                }
+
+                Text {
+                    text: "last Lat: "
+                    Layout.row: 7
+                    Layout.column: 0
+                }
+
+                Text {
+                    id: lastLatLabel
+                    Layout.row: 7
+                    Layout.column: 1
+                    text: "(None)"
+                }
             }
 
             MetadataProvider {
                 id: mdProvider;
                 onLocationsChanged: {
                     invAspectRatio = vlcPlayer.video.height/vlcPlayer.video.width
+                    compressorIdLabel.text  = mdProvider.wrappingInfo.compressionID
+                    encryptionPwdLabel.text = mdProvider.wrappingInfo.passphrase
+                    countLabel.text   = mdProvider.statInfo.count
+                    minLatLabel.text  = mdProvider.statInfo.minLat
+                    avgLatLabel.text  = mdProvider.statInfo.avgLat
+                    lastLatLabel.text = mdProvider.statInfo.lastLat
 
                     trajectoryChanged(mdProvider.locations);
-                    //trajectoryChanged(locations);
                 }
-            }
-
-            BusyIndicator {
-                anchors.fill: parent
-                height: 20
             }
         }
     }
