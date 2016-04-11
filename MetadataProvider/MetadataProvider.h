@@ -176,7 +176,7 @@ class MetadataProvider : public QObject
     Q_OBJECT
 
     Q_PROPERTY(QString address READ address WRITE setAddress NOTIFY addressChanged)
-    Q_PROPERTY(QQmlListProperty<Location> locations READ locations NOTIFY locationsChanged)
+    Q_PROPERTY(QQmlListProperty<Location> locations READ locations)
     Q_PROPERTY(WrappingInfo* wrappingInfo READ wrappingInfo)
     Q_PROPERTY(StatInfo* statInfo READ statInfo)
 
@@ -198,10 +198,6 @@ signals:
     void segmentAdded();
     void schemaAdded();
     void metadataAdded();
-    void locationsChanged(QQmlListProperty<Location> locations);
-//    void locationsChanged(QString locations);
-//    void locationsChanged(QPointF locations);
-//    void locationsChanged(QList<Location> locations);
 
 public slots:
     void start();

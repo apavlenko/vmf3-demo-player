@@ -391,8 +391,5 @@ void MetadataProvider::updateLocations()
         loc->setLongitude(getFieldValue(md, "longitude"));
         m_locations.append(loc);
     }
-
-    QQmlListProperty<Location> propList = QQmlListProperty<Location>(this, m_locations);
-    emit locationsChanged(propList);
 }
 
