@@ -60,7 +60,7 @@ ApplicationWindow {
             script = script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject)
             web.runJavaScript(script);
 
-            console.log(script);
+            console.debug(script);
         }
     }
 

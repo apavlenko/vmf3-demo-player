@@ -10,6 +10,7 @@ import vmf3.demo.metadata 1.0
 Rectangle {
     property string ip
     property bool playing : false
+    property double invAspectRatio : 1.0
     signal trajectoryChanged(variant trajectory)
     signal started()
     signal stopped()
@@ -82,6 +83,10 @@ Rectangle {
         ipCombo.model.append({text: ip})
     }
 
+    onInvAspectRatioChanged: {
+        videoPanel.height = videoPanel.width*invAspectRatio
+    }
+
     SplitView
     {
         anchors.fill: parent
@@ -91,6 +96,12 @@ Rectangle {
             id: videoPanel
             Layout.minimumHeight: 120
             //Layout.fillHeight: true
+            height: width*invAspectRatio
+
+            onWidthChanged: {
+                height = width*invAspectRatio
+            }
+
             Text {
                 id: videoLabel
                 text: "No video"
@@ -154,8 +165,7 @@ Rectangle {
             MetadataProvider {
                 id: mdProvider;
                 onLocationsChanged: {
-                    videoPanel.width  = vlcPlayer.video.width
-                    videoPanel.height = vlcPlayer.video.height
+                    invAspectRatio = vlcPlayer.video.height/vlcPlayer.video.width
 
                     trajectoryChanged(mdProvider.locations);
                     //trajectoryChanged(locations);
