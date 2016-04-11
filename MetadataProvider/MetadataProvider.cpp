@@ -326,7 +326,10 @@ void MetadataProvider::execute()
                     }
                     updateLocations();
                     std::cerr << "*** MetadataProvider::execute() : points per message = " << num << std::endl;
-                    emit metadataAdded();
+                    if(!m_exiting)
+                    {
+                        emit metadataAdded();
+                    }
                 }
             }
         }
@@ -375,6 +378,7 @@ double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const 
 
 void MetadataProvider::updateLocations()
 {
+    std::unique_lock< std::mutex > lock( m_lock );
     std::cerr << "*** MetadataProvider::updateLocations()" << std::endl;
 
     vmf::MetadataSet ms = m_ms.getAll();
