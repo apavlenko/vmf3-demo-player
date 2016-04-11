@@ -72,7 +72,9 @@ Rectangle {
         console.debug("stop")
         videoLabel.text = "Stopped"
         vlcPlayer.stop()
+        console.debug("vlcPlayer stopped")
         mdProvider.stop()
+        console.debug("mdProvider stopped")
         startStopButton.text = "Start"
 
         compressorIdLabel.text  = "(None)"
@@ -268,7 +270,8 @@ Rectangle {
 
             MetadataProvider {
                 id: mdProvider;
-                onLocationsChanged: {
+                onMetadataAdded: {
+                    console.debug("onMetadataAdded()")
                     invAspectRatio = vlcPlayer.video.height/vlcPlayer.video.width
                     compressorIdLabel.text  = mdProvider.wrappingInfo.compressionID
                     encryptionPwdLabel.text = mdProvider.wrappingInfo.passphrase
