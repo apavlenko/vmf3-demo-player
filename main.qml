@@ -13,9 +13,11 @@ ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
     width: 1250
-    height: 625
+    height: 675
 
     property variant paths : [ [], [] ]
+    property variant legends : [legend0, legend1]
+    property variant deviceIdLabels: [deviceIdLabel0, deviceIdLabel1]
 
     function initializeMap(coord)
     {
@@ -40,7 +42,6 @@ ApplicationWindow {
 
     function drawObject(nObject)
     {
-        hideObject(nObject)
         var script = "drawObject(%1, %2, %3, %4, %5);\n";
         var len = paths[nObject].length
         if(len > 0)
@@ -62,12 +63,19 @@ ApplicationWindow {
             script = script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject)
             web.runJavaScript(script);
 
+            legends[nObject].visible = true
+
             console.debug(script);
+        }
+        else
+        {
+            hideObject(nObject)
         }
     }
 
     function hideObject(nObject)
     {
+        legends[nObject].visible = false
         web.runJavaScript("removeObject(%1);\n".arg(nObject));
     }
 
@@ -116,10 +124,10 @@ ApplicationWindow {
 
             VideoMetaWidget {
                 anchors.fill: parent
-                anchors.margins: 5
                 //ip: "192.168.10.190"
                 ip: "192.168.10.218"
                 onTrajectoryChanged: {
+                    deviceIdLabels[0].text = deviceId
                     paths[0] = trajectory
                     drawRoute(0)
                     drawObject(0)
@@ -137,9 +145,9 @@ ApplicationWindow {
 
             VideoMetaWidget {
                 anchors.fill: parent
-                anchors.margins: 5
                 ip: "192.168.10.176"
                 onTrajectoryChanged: {
+                    deviceIdLabels[1].text = deviceId
                     paths[1] = trajectory
                     drawRoute(1)
                     drawObject(1)
@@ -186,6 +194,43 @@ ApplicationWindow {
                         onClicked: {
                             removeRoute(0); hideObject(0);
                             removeRoute(1); hideObject(1);
+                        }
+                    }
+
+                    Rectangle {
+                        //placeholder
+                        Layout.fillWidth: true
+                    }
+
+                    RowLayout {
+                        id: legend0
+                        visible: false
+                        spacing: 2
+                        Rectangle {
+                            color: "#ff0000"
+                            border.color: "#000000"
+                            width: 20
+                            height: 20
+                        }
+                        Text {
+                            id: deviceIdLabel0
+                            text: "device #0"
+                        }
+                    }
+
+                    RowLayout {
+                        id: legend1
+                        visible: false
+                        spacing: 2
+                        Rectangle {
+                            color: "#0000ff"
+                            border.color: "#000000"
+                            width: 20
+                            height: 20
+                        }
+                        Text {
+                            id: deviceIdLabel1
+                            text: "device #1"
                         }
                     }
                 }

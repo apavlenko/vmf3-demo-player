@@ -179,6 +179,7 @@ class MetadataProvider : public QObject
     Q_PROPERTY(QQmlListProperty<Location> locations READ locations)
     Q_PROPERTY(WrappingInfo* wrappingInfo READ wrappingInfo)
     Q_PROPERTY(StatInfo* statInfo READ statInfo)
+    Q_PROPERTY(QString deviceId READ deviceId)
 
 public:
     explicit MetadataProvider(QObject *parent = 0);
@@ -192,6 +193,8 @@ public:
     WrappingInfo* wrappingInfo();
 
     StatInfo* statInfo();
+
+    QString deviceId();
 
 signals:
     void addressChanged();
@@ -225,6 +228,7 @@ private:
     QList<Location*> m_locations;
     WrappingInfo* m_wrappingInfo;
     StatInfo* m_statInfo;
+    QString m_deviceId;
     mutable std::mutex m_lock;
 
     class ConnectionLock;

@@ -83,6 +83,7 @@ MetadataProvider::MetadataProvider(QObject *parent)
     , m_sock(-1)
     , m_wrappingInfo(new WrappingInfo())
     , m_statInfo(new StatInfo())
+    , m_deviceId("")
 {
     vmf::Log::setVerbosityLevel(vmf::LogLevel::LOG_ERROR);
 }
@@ -281,6 +282,7 @@ void MetadataProvider::execute()
                             m_ms.addVideoSegment(segment);
                         }
                     }
+                    m_deviceId = QString::fromStdString(m_ms.getAllVideoSegments()[0]->getTitle());
                     emit segmentAdded();
                 }
             }
@@ -358,6 +360,12 @@ StatInfo* MetadataProvider::statInfo()
 {
     std::unique_lock< std::mutex > lock( m_lock );
     return m_statInfo;
+}
+
+QString MetadataProvider::deviceId()
+{
+    std::unique_lock< std::mutex > lock( m_lock );
+    return m_deviceId;
 }
 
 double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const std::string& name)

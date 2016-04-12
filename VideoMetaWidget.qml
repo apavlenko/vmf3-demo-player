@@ -8,7 +8,10 @@ import QtMultimedia 5.0
 import vmf3.demo.metadata 1.0
 
 Rectangle {
+    id: videoMetaWidget
+
     property string ip
+    property string deviceId
     property bool playing : false
     property double invAspectRatio : 1.0
     signal trajectoryChanged(variant trajectory)
@@ -77,6 +80,7 @@ Rectangle {
         console.debug("mdProvider stopped")
         startStopButton.text = "Start"
 
+        deviceIdlabel.text      = "(None)"
         compressorIdLabel.text  = "(None)"
         encryptionPwdLabel.text = "(None)"
         countLabel.text   = "(None)"
@@ -207,94 +211,86 @@ Rectangle {
                 Text {
                     text: "Wrapping info"
                     font.bold: true
-                    Layout.row: 0
-                    Layout.column: 0
+                }
+
+                Text {
+                    text: ""
+                    //placeholder
+                }
+
+                Text {
+                    text: "device ID:"
+                }
+
+                Text {
+                    id: deviceIdlabel
+                    font.italic: true
+                    text: "(None)"
                 }
 
                 Text {
                     text: "compressor ID: "
-                    Layout.row: 1
-                    Layout.column: 0
                 }
 
                 Text {
                     id: compressorIdLabel
                     font.italic: true
-                    Layout.row: 1
-                    Layout.column: 1
                     text: "(None)"
                 }
 
                 Text {
                     text: "encryption passphrase: "
-                    Layout.row: 2
-                    Layout.column: 0
                 }
 
                 Text {
                     id: encryptionPwdLabel
                     font.italic: true
-                    Layout.row: 2
-                    Layout.column: 1
                     text: "(None)"
                 }
 
                 Text {
                     text: "Stat info"
                     font.bold: true
-                    Layout.row: 3
-                    Layout.column: 0
+                }
+
+                Text {
+                    text: ""
+                    //placeholder
                 }
 
                 Text {
                     text: "count: "
-                    Layout.row: 4
-                    Layout.column: 0
                 }
 
                 Text {
                     id: countLabel
-                    Layout.row: 4
-                    Layout.column: 1
                     text: "(None)"
                 }
 
                 Text {
                     text: "min Lat: "
-                    Layout.row: 5
-                    Layout.column: 0
                 }
 
                 Text {
                     id: minLatLabel
-                    Layout.row: 5
-                    Layout.column: 1
                     text: "(None)"
                 }
 
                 Text {
                     text: "avg Lat: "
-                    Layout.row: 6
-                    Layout.column: 0
                 }
 
                 Text {
                     id: avgLatLabel
-                    Layout.row: 6
-                    Layout.column: 1
                     text: "(None)"
                 }
 
                 Text {
                     text: "last Lat: "
-                    Layout.row: 7
-                    Layout.column: 0
                 }
 
                 Text {
                     id: lastLatLabel
-                    Layout.row: 7
-                    Layout.column: 1
                     text: "(None)"
                 }
             }
@@ -304,6 +300,7 @@ Rectangle {
                 onMetadataAdded: {
                     console.debug("onMetadataAdded()")
                     invAspectRatio = vlcPlayer.video.height/vlcPlayer.video.width
+                    deviceIdlabel.text      = mdProvider.deviceId
                     compressorIdLabel.text  = mdProvider.wrappingInfo.compressionID
                     encryptionPwdLabel.text = mdProvider.wrappingInfo.passphrase
                     countLabel.text   = mdProvider.statInfo.count
@@ -311,6 +308,7 @@ Rectangle {
                     avgLatLabel.text  = mdProvider.statInfo.avgLat
                     lastLatLabel.text = mdProvider.statInfo.lastLat
 
+                    videoMetaWidget.deviceId = mdProvider.deviceId
                     trajectoryChanged(mdProvider.locations);
                 }
             }
