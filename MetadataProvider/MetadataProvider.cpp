@@ -21,6 +21,16 @@
 //#define USE_NATIVE_ENDIAN
 #define USE_SIZES_ON_HANDSHAKE
 
+static const std::string schemaName = vmf::MetadataSchema::getStdSchemaName();
+static const std::string descName = "location";
+static const std::string latFieldName = "latitude";
+static const std::string lngFieldName = "longitude";
+static const std::string countStatName = "count";
+static const std::string minStatName = "minLat";
+static const std::string avgStatName = "avgLat";
+static const std::string lastStatName = "lastLat";
+static const std::string statName = "stat";
+
 #if defined(USE_NATIVE_ENDIAN)
 # define zzntohl(_sz) (_sz)
 #else
@@ -248,19 +258,24 @@ void MetadataProvider::execute()
         std::cerr << "*** MetadataProvider::execute() : connect : " << (connection.isSuccessful() ? "SUCC" : "FAIL") << std::endl;
         if (connection.isSuccessful())
         {
-            std::shared_ptr<vmf::FormatXML> f = std::make_shared<vmf::FormatXML>();
+            std::shared_ptr<vmf::Format> f = std::make_shared<vmf::FormatXML>();
 
             //actual compressor ID will be recognized at parse() call, but should be the following
+            //TODO: specify actual Encryptor and passphrase
             {
                 std::unique_lock< std::mutex > lock( m_lock );
                 m_wrappingInfo->setCompressionID("com.intel.vmf.compressor.zlib");
+                m_wrappingInfo->setPassphrase("");
             }
 
-            vmf::FormatCompressed parser(f, m_wrappingInfo->compressionID().toStdString());
+            f = std::make_shared<vmf::FormatCompressed>(f, m_wrappingInfo->compressionID().toStdString());
+
+            vmf::FormatEncrypted parser(f, nullptr);
 
             std::vector<vmf::MetadataInternal> metadata;
             std::vector<std::shared_ptr<vmf::MetadataSchema>> schemas;
             std::vector<std::shared_ptr<vmf::MetadataStream::VideoSegment>> segments;
+            std::vector< vmf::Stat > stats;
             vmf::Format::AttribMap attribs;
             vmf::Format::ParseCounters c;
 
@@ -271,7 +286,7 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
-                    c = parser.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, stats, attribs);
                     if (!(c.segments > 0))
                         throw std::runtime_error("expected video segment(s) not sent by server");
                     for (auto segment : segments)
@@ -292,7 +307,7 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
-                    c = parser.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, stats, attribs);
                     if (!(c.schemas > 0))
                         throw std::runtime_error("expected video schema(s) not sent by server");
                     for (auto schema : schemas)
@@ -307,6 +322,18 @@ void MetadataProvider::execute()
                 }
             }
 
+            //set up statistics object
+            std::vector< vmf::StatField > statFields;
+            statFields.emplace_back(countStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Count));
+            statFields.emplace_back(minStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Min));
+            statFields.emplace_back(avgStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Average));
+            statFields.emplace_back(lastStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Last));
+            m_ms.addStat(vmf::Stat(statName, statFields, vmf::Stat::UpdateMode::Manual));
+
             while (!m_exiting)
             {
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
@@ -315,7 +342,7 @@ void MetadataProvider::execute()
                     std::cerr << std::string(buf) << std::endl;
 
                     metadata.clear();
-                    c = parser.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, stats, attribs);
                     if (!(c.metadata > 0))
                         throw std::runtime_error("expected metadata not sent by server");
                     int num = 0;
@@ -399,9 +426,19 @@ void MetadataProvider::updateLocations()
     for(std::shared_ptr<vmf::Metadata> md : ms)
     {
         Location* loc = new Location();
-        loc->setLatitude( getFieldValue(md, "latitude"));
-        loc->setLongitude(getFieldValue(md, "longitude"));
+        loc->setLatitude( getFieldValue(md, latFieldName));
+        loc->setLongitude(getFieldValue(md, lngFieldName));
         m_locations.append(loc);
     }
+
+    //update statistics: doRescan + doWait
+    vmf::Stat& stat = m_ms.getStat(statName);
+    stat.update(true, true);
+
+    //grab statistics
+    m_statInfo->setCount((vmf::vmf_integer)stat.getField(countStatName).getValue());
+    m_statInfo->setMinLat(stat.getField(minStatName).getValue());
+    m_statInfo->setAvgLat(stat.getField(avgStatName).getValue());
+    m_statInfo->setLastLat(stat.getField(lastStatName).getValue());
 }
 
