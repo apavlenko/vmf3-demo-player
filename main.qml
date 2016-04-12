@@ -12,6 +12,8 @@ import vmf3.demo.metadata 1.0
 ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
+    width: 1250
+    height: 625
 
     property variant paths : [ [], [] ]
 

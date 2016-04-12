@@ -17,12 +17,12 @@ Rectangle {
 
     function getMrl(ipText)
     {
-        return "rtsp://"+ipText+":1234";
+        return "rtsp://"+ipText+":"+videoPortSpin.value;
     }
 
     function getVMFaddr(ipText)
     {
-        return ipText+":4321";
+        return ipText+":"+vmfPortSpin.value;
     }
 
     function updateIp(newIp)
@@ -130,35 +130,66 @@ Rectangle {
 
         Rectangle {
             id: buttonsPanel
-            Layout.minimumHeight: 30
-            Layout.maximumHeight: 30
+            Layout.minimumHeight: 60
+            Layout.maximumHeight: 60
 
-            RowLayout {
+            ColumnLayout
+            {
                 anchors.fill: parent
-
-                ComboBox {
-                    id: ipCombo
-                    editable: true
+                spacing: 2
+                RowLayout {
+                    spacing: 2
                     Layout.fillWidth: true
-                    model: ListModel { }
-                    onAccepted: {
-                        console.debug("onAccepted")
-                        if (find(currentText) === -1) {
-                            ipCombo.model.append({text: editText})
-                            currentIndex = find(editText)
+
+                    ComboBox {
+                        id: ipCombo
+                        editable: true
+                        Layout.fillWidth: true
+                        model: ListModel { }
+                        onAccepted: {
+                            console.debug("onAccepted")
+                            if (find(currentText) === -1) {
+                                ipCombo.model.append({text: editText})
+                                currentIndex = find(editText)
+                            }
+                            updateIp(editText)
                         }
-                        updateIp(editText)
+                        onActivated: {
+                            console.debug("onActivated")
+                            updateIp(textAt(index))
+                        }
                     }
-                    onActivated: {
-                        console.debug("onActivated")
-                        updateIp(textAt(index))
+                    Button {
+                        id: startStopButton
+                        width: 25
+                        text: "Start"
+                        onClicked: togglePlaying()
                     }
                 }
-                Button {
-                    id: startStopButton
-                    width: 25
-                    text: "Start"
-                    onClicked: togglePlaying()
+
+                RowLayout {
+                    spacing: 2
+                    Text {
+                        text: "RTSP port:"
+                    }
+                    SpinBox {
+                        id: videoPortSpin
+                        minimumValue: 0
+                        maximumValue: 65535
+                        Layout.fillWidth: true
+                        value: 1234
+                    }
+
+                    Text {
+                        text: "VMF port:"
+                    }
+                    SpinBox {
+                        id: vmfPortSpin
+                        minimumValue: 0
+                        maximumValue: 65535
+                        Layout.fillWidth: true
+                        value: 4321
+                    }
                 }
             }
         }
