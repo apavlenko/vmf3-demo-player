@@ -12,59 +12,104 @@ import vmf3.demo.metadata 1.0
 ApplicationWindow {
     visible: true
     title: qsTr("VMF-3 Demo Player")
+    width: 1250
+    height: 675
 
-    function initializeMap()
+    property variant paths : [ [], [] ]
+    property variant legends : [legend0, legend1]
+    property variant deviceIdLabels: [deviceIdLabel0, deviceIdLabel1]
+
+    function initializeMap(coord)
     {
-        var coord  = {lat : 37.235, lng : -115.811};
         var script = "map.setCenter(new google.maps.LatLng(%1,%2));\n";
         web.runJavaScript(script.arg(coord.lat).arg(coord.lng));
     }
 
-    function drawObject()
+    function getRotation(fromPt, toPt)
     {
-        var script = "drawObject(%1 , %2,  %3);\n";
-        var coord  = {lat : 37.235 + 0.01, lng : -115.811 + 0.02};
-        var rotate = 45;
-        web.runJavaScript(script.arg(coord.lat).arg(coord.lng).arg(rotate));
+        var dx = toPt.x - fromPt.x
+        var dy = toPt.y - fromPt.y
+
+        if (dx == 0 && dy == 0)
+            return 0;
+        else if (dx == 0)
+            return dy > 0 ? 90 : 270;
+
+        var rotate = Math.atan2(dy, dx)*180/Math.PI;
+
+        return rotate >= 0 ? rotate : rotate + 360;
     }
 
-    function drawRoute()
+    function drawObject(nObject)
     {
-        var coord1  = {lat : 37.235, lng : -115.811};
-        var coord2  = {lat : coord1.lat + 0.01, lng : coord1.lng - 0.02};
-        var script = "";
-        script += "myCoordinates = [\n";
-        for(var i = 0; i < 25; i++)
+        var script = "drawObject(%1, %2, %3, %4, %5);\n";
+        var len = paths[nObject].length
+        if(len > 0)
         {
-            var t = 1.0*i/24;
-            var lat = t*coord1.lat + (1.0-t)*coord2.lat;
-            var lng = t*coord1.lng + (1.0-t)*coord2.lng;
-            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+            var toPt = paths[nObject][len-1]
+            var fromPt = toPt;
+            if(len >= 2)
+                fromPt = paths[nObject][len-2]
+
+            var lat = toPt.latitude
+            var lng = toPt.longitude
+            var rotate = getRotation({x: fromPt.latitude, y: fromPt.longitude},
+                                     {x:   toPt.latitude, y:   toPt.longitude})
+            var colorStr = ""
+            if(nObject === 0)
+                colorStr = "'red'"
+            else
+                colorStr = "'blue'"
+            script = script.arg(lat).arg(lng).arg(rotate).arg(colorStr).arg(nObject)
+            web.runJavaScript(script);
+
+            legends[nObject].visible = true
+
+            console.debug(script);
         }
-        script += "];\n";
-        script += "myColor = '#FF0000';\n";
-        script += "drawRoute(myCoordinates, myColor);\n";
-        web.runJavaScript(script);
+        else
+        {
+            hideObject(nObject)
+        }
     }
 
-    function drawVertex(coord1, coord2)
+    function hideObject(nObject)
     {
-        var script = "";
-        script += "myCoordinates = [\n";
+        legends[nObject].visible = false
+        web.runJavaScript("removeObject(%1);\n".arg(nObject));
+    }
+
+    function drawRoute(nPath)
+    {
+        web.runJavaScript("removePath(%1);\n".arg(nPath))
+        var len = paths[nPath].length
+        if(len >= 2)
         {
-            var lat = coord1.x;
-            var lng = coord1.y;
-            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+            var script = "";
+            script += "myCoordinates = [\n";
+            for(var i = 0; i < len; i++)
+            {
+                var lat = paths[nPath][i].latitude
+                var lng = paths[nPath][i].longitude
+                script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
+            }
+            script += "];\n";
+            var colorStr = ""
+            if(nPath === 0)
+                colorStr = "#FF0000"
+            else
+                colorStr = "#0000FF"
+            script += "myColor = '" + colorStr + "';\n";
+            script += "nPath = " + nPath + ";\n";
+            script += "drawRoute(myCoordinates, myColor, nPath);\n";
+            web.runJavaScript(script);
         }
-        {
-            var lat = coord2.x;
-            var lng = coord2.y;
-            script += "new google.maps.LatLng(%1 , %2),\n".arg(lat).arg(lng);
-        }
-        script += "];\n";
-        script += "myColor = '#FF0000';\n";
-        script += "drawRoute(myCoordinates, myColor);\n";
-        web.runJavaScript(script);
+    }
+
+    function removeRoute(nPath)
+    {
+        paths[nPath] = []
+        web.runJavaScript("removePath(%1);\n".arg(nPath))
     }
 
     SplitView {
@@ -75,73 +120,41 @@ ApplicationWindow {
 
         Rectangle {
             Layout.minimumWidth: 320
-            color: "green"
-                Text {
-                    text: "Video 1"
-                    anchors.centerIn: parent
+            color: "red"
+
+            VideoMetaWidget {
+                anchors.fill: parent
+                //ip: "192.168.10.190"
+                ip: "192.168.10.218"
+                onTrajectoryChanged: {
+                    deviceIdLabels[0].text = deviceId
+                    paths[0] = trajectory
+                    drawRoute(0)
+                    drawObject(0)
                 }
-                VlcPlayer {
-                    id: vlcPlayer;
-                    mrl: "rtsp://192.168.10.218:1234";
+                onStarted: { }
+                onStopped: {
+                    removeRoute(0); hideObject(0);
                 }
-                VlcVideoSurface {
-                    id: vlcSurface;
-                    source: vlcPlayer;
-                    anchors.fill: parent;
-                }
+            }
         }
+
         Rectangle {
             Layout.minimumWidth: 320
-            color: "yellow"
-            Text {
-                text: "Video 2"
-                anchors.centerIn: parent
-            }
-            VlcPlayer {
-                id: vlcPlayer2;
-                mrl: "rtsp://192.168.10.176:1234";
-            }
-            VlcVideoSurface {
-                id: vlcVideoOut2;
-                source: vlcPlayer2;
-                anchors.fill: parent;
-            }
-            MetadataProvider {
-                id: mdprovider2;
-                address: "192.168.10.176:4321"
-                property var points : [];
-                onLocationsChanged: {
-                    points[points.length] = locations;
-                    if (points.length >= 2) {
-                        var p1 = points[points.length-2];
-                        var p2 = points[points.length-1];
-                        drawVertex(p1, p2);
-                    }
-                }
-            }
-        }
+            color: "blue"
 
-        SplitView {
-            orientation: Qt.Vertical
-
-            Button {
-                text: "init"
-                onClicked: {
-                    initializeMap();
+            VideoMetaWidget {
+                anchors.fill: parent
+                ip: "192.168.10.176"
+                onTrajectoryChanged: {
+                    deviceIdLabels[1].text = deviceId
+                    paths[1] = trajectory
+                    drawRoute(1)
+                    drawObject(1)
                 }
-            }
-            Button {
-                text : "draw object"
-                onClicked: {
-                    drawObject();
-                    console.debug("mouse2 clicked");
-                    mdprovider2.start();
-                }
-            }
-            Button {
-                text : "draw route"
-                onClicked: {
-                    drawRoute();
+                onStarted: { }
+                onStopped: {
+                    removeRoute(1); hideObject(1);
                 }
             }
         }
@@ -149,16 +162,80 @@ ApplicationWindow {
         Rectangle {
             Layout.fillWidth: true
             Layout.minimumWidth: 320
-            color: "red"
 
-            WebEngineView {
-                id: web
+            ColumnLayout {
+                spacing : 2
                 anchors.fill: parent
-                url: "map.html"
-            }
 
+                Rectangle {
+                    anchors.top : parent.top
+                    anchors.bottom: mapRowLayout.top
+                    anchors.left: parent.left
+                    anchors.right: parent.right
+
+                    //Layout.fillHeight: true
+                    //Layout.fillWidth: true
+                    //Layout.alignment: Qt.AlignTop
+
+                    WebEngineView {
+                        id: web
+                        anchors.fill: parent
+                        url: "map.html"
+                    }
+                }
+
+                RowLayout {
+                    id : mapRowLayout
+                    spacing : 2
+                    Layout.alignment: Qt.AlignBottom
+
+                    Button {
+                        text : "remove routes"
+                        onClicked: {
+                            removeRoute(0); hideObject(0);
+                            removeRoute(1); hideObject(1);
+                        }
+                    }
+
+                    Rectangle {
+                        //placeholder
+                        Layout.fillWidth: true
+                    }
+
+                    RowLayout {
+                        id: legend0
+                        visible: false
+                        spacing: 2
+                        Rectangle {
+                            color: "#ff0000"
+                            border.color: "#000000"
+                            width: 20
+                            height: 20
+                        }
+                        Text {
+                            id: deviceIdLabel0
+                            text: "device #0"
+                        }
+                    }
+
+                    RowLayout {
+                        id: legend1
+                        visible: false
+                        spacing: 2
+                        Rectangle {
+                            color: "#0000ff"
+                            border.color: "#000000"
+                            width: 20
+                            height: 20
+                        }
+                        Text {
+                            id: deviceIdLabel1
+                            text: "device #1"
+                        }
+                    }
+                }
+            }
         }
     }
-
 }
 

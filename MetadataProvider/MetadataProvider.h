@@ -5,15 +5,16 @@
 
 #include <QObject>
 #include <QPointF>
+#include <QString>
 #include <QQmlListProperty>
 
 #include <atomic>
 #include <mutex>
 #include <thread>
 
-class Location
+class Location : public QObject
 {
-    Q_GADGET
+    Q_OBJECT
 
     Q_PROPERTY(double latitude READ latitude WRITE setLatitude)
     Q_PROPERTY(double longitude READ longitude WRITE setLongitude)
@@ -22,6 +23,17 @@ class Location
 //    Q_PROPERTY(double speed READ speed WRITE setSpeed)
 
 public:
+    explicit Location(QObject* parent = 0) :
+        QObject(parent), m_latitude(0.0), m_longitude(0.0)
+    { }
+
+    Location(const Location& l) :
+        QObject(l.parent()), m_latitude(l.m_latitude), m_longitude(l.m_longitude)
+    { }
+
+    ~Location()
+    { }
+
     double latitude() const { return m_latitude; }
     void setLatitude(double latitude) { m_latitude = latitude; }
 
@@ -45,18 +57,129 @@ private:
 //    double m_speed;
 };
 
+
 Q_DECLARE_METATYPE(Location)
+Q_DECLARE_METATYPE(QQmlListProperty<Location>)
+
+
+//class for passing info to GUI
+class WrappingInfo : public QObject
+{
+    Q_OBJECT
+
+    Q_PROPERTY(QString compressionID READ compressionID WRITE setCompressionID)
+    Q_PROPERTY(QString passphrase READ passphrase WRITE setPassphrase)
+
+public:
+
+    explicit WrappingInfo(QObject* parent = 0) :
+        QObject(parent), m_compressionID(""), m_passphrase("")
+    { }
+
+    WrappingInfo(const WrappingInfo& wi) :
+        QObject(wi.parent()),
+        m_compressionID(wi.m_compressionID),
+        m_passphrase(wi.m_passphrase)
+    { }
+
+    WrappingInfo& operator=(const WrappingInfo& wi)
+    {
+        //QObject::operator =(wi);
+        m_compressionID = wi.m_compressionID;
+        m_passphrase = wi.m_passphrase;
+        return *this;
+    }
+
+    ~WrappingInfo()
+    { }
+
+    QString compressionID() const { return m_compressionID; }
+    void setCompressionID(const QString& id) { m_compressionID = id; }
+
+    QString passphrase() const { return m_passphrase; }
+    void setPassphrase(const QString& pwd) { m_passphrase = pwd; }
+
+private:
+    QString m_compressionID;
+    QString m_passphrase;
+
+};
+
+Q_DECLARE_METATYPE(WrappingInfo)
+
+
+//class for passing info to GUI
+class StatInfo : public QObject
+{
+    Q_OBJECT
+
+    Q_PROPERTY(int count READ count WRITE setCount)
+    Q_PROPERTY(double minLat READ minLat WRITE setMinLat)
+    Q_PROPERTY(double avgLat READ avgLat WRITE setAvgLat)
+    Q_PROPERTY(double lastLat READ lastLat WRITE setLastLat)
+
+public:
+
+    explicit StatInfo(QObject* parent = 0) :
+        QObject(parent),
+        m_count(0),
+        m_minLat(0),
+        m_avgLat(0),
+        m_lastLat(0)
+    { }
+
+    StatInfo(const StatInfo& si) :
+        QObject(si.parent()),
+        m_count(si.m_count),
+        m_minLat(si.m_minLat),
+        m_avgLat(si.m_avgLat),
+        m_lastLat(si.m_lastLat)
+    { }
+
+    StatInfo& operator=(const StatInfo& si)
+    {
+        //QObject::operator =(si);
+        m_count = si.m_count;
+        m_minLat = si.m_minLat;
+        m_avgLat = si.m_avgLat;
+        m_lastLat = si.m_lastLat;
+        return *this;
+    }
+
+    ~StatInfo()
+    { }
+
+    int count() const { return m_count; }
+    void setCount(int c) { m_count = c; }
+
+    double minLat() const { return m_minLat; }
+    void setMinLat(double v) { m_minLat = v; }
+
+    double avgLat() const { return m_avgLat; }
+    void setAvgLat(double v) { m_avgLat = v; }
+
+    double lastLat() const { return m_lastLat; }
+    void setLastLat(double v) { m_lastLat = v; }
+
+private:
+    int m_count;
+    double m_minLat;
+    double m_avgLat;
+    double m_lastLat;
+};
+
+Q_DECLARE_METATYPE(StatInfo)
+
 
 class MetadataProvider : public QObject
 {
     Q_OBJECT
 
     Q_PROPERTY(QString address READ address WRITE setAddress NOTIFY addressChanged)
-//    Q_PROPERTY(QList<Location> locations READ locations NOTIFY locationsChanged)
-//    Q_PROPERTY(QQmlListProperty<Location> locations READ locations NOTIFY locationsChanged)
-//    Q_PROPERTY(QString locations READ locations NOTIFY locationsChanged)
-    Q_PROPERTY(QPointF locations READ locations NOTIFY locationsChanged)
-//    Q_PROPERTY(QList<QPointF> locations READ locations NOTIFY locationsChanged)
+    Q_PROPERTY(QQmlListProperty<Location> locations READ locations)
+    Q_PROPERTY(WrappingInfo* wrappingInfo READ wrappingInfo)
+    Q_PROPERTY(StatInfo* statInfo READ statInfo)
+    Q_PROPERTY(QString deviceId READ deviceId)
 
 public:
     explicit MetadataProvider(QObject *parent = 0);
@@ -65,21 +188,19 @@ public:
     QString address();
     void setAddress(const QString& address);
 
-//    QList<Location> locations() const;
-//    QQmlListProperty<Location> locations();
-//    QString locations();
-    QPointF locations() const;
-//    QList<QPointF> locations() const;
+    QQmlListProperty<Location> locations();
+
+    WrappingInfo* wrappingInfo();
+
+    StatInfo* statInfo();
+
+    QString deviceId();
 
 signals:
     void addressChanged();
     void segmentAdded();
     void schemaAdded();
     void metadataAdded();
-//    void locationsChanged(QQmlListProperty<Location> locations);
-//    void locationsChanged(QString locations);
-    void locationsChanged(QPointF locations);
-//    void locationsChanged(QList<Location> locations);
 
 public slots:
     void start();
@@ -104,9 +225,10 @@ private:
     int m_sock;
 
     vmf::MetadataStream m_ms;
-//    QList<Location*> m_locations;
-    std::vector<QPointF> m_locations;
-//    QList<QPointF> m_locations;
+    QList<Location*> m_locations;
+    WrappingInfo* m_wrappingInfo;
+    StatInfo* m_statInfo;
+    QString m_deviceId;
     mutable std::mutex m_lock;
 
     class ConnectionLock;

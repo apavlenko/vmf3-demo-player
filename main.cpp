@@ -13,12 +13,17 @@ int main(int argc, char *argv[])
 {
     RegisterQmlVlc();
     QmlVlcConfig& config = QmlVlcConfig::instance();
-    //config.enableDebug( true );
+    config.enableDebug( false );
 
     qmlRegisterType<MetadataProvider>("vmf3.demo.metadata", 1, 0, "MetadataProvider");
-    qRegisterMetaType<Location>();
-//    qRegisterMetaType<QList<Location*>>();
-//    qRegisterMetaType<QQmlListProperty<Location>>();
+
+    qmlRegisterType<Location>("vmf3.demo.metadata", 1, 0, "Location");
+    qmlRegisterType<WrappingInfo>("vmf3.demo.metadata", 1, 0, "WrappingInfo");
+    qmlRegisterType<StatInfo>("vmf3.demo.metadata", 1, 0, "StatInfo");
+
+    //qmlRegisterType<QQmlListProperty<Location>>("vmf3.demo.metadata", 1, 0, "LocationList");
+    //qRegisterMetaType<QQmlListProperty<Location>>();
+
 
     QApplication app(argc, argv);
 

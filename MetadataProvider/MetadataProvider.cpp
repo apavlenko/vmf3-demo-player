@@ -18,8 +18,18 @@
 #include <sstream>
 #include <stdexcept>
 
-#define USE_NATIVE_ENDIAN
+//#define USE_NATIVE_ENDIAN
 #define USE_SIZES_ON_HANDSHAKE
+
+static const std::string schemaName = vmf::MetadataSchema::getStdSchemaName();
+static const std::string descName = "location";
+static const std::string latFieldName = "latitude";
+static const std::string lngFieldName = "longitude";
+static const std::string countStatName = "count";
+static const std::string minStatName = "minLat";
+static const std::string avgStatName = "avgLat";
+static const std::string lastStatName = "lastLat";
+static const std::string statName = "stat";
 
 #if defined(USE_NATIVE_ENDIAN)
 # define zzntohl(_sz) (_sz)
@@ -81,12 +91,17 @@ MetadataProvider::MetadataProvider(QObject *parent)
     , m_working(false)
     , m_exiting(false)
     , m_sock(-1)
+    , m_wrappingInfo(new WrappingInfo())
+    , m_statInfo(new StatInfo())
+    , m_deviceId("")
 {
     vmf::Log::setVerbosityLevel(vmf::LogLevel::LOG_ERROR);
 }
 
 MetadataProvider::~MetadataProvider()
 {
+    delete m_wrappingInfo;
+    delete m_statInfo;
     stop();
 }
 
@@ -145,19 +160,26 @@ bool MetadataProvider::putAddress(const QString& address)
 
 void MetadataProvider::start()
 {
+    std::cerr << "*** MetadataProvider::start()" << std::endl;
     if (!m_working)
     {
+        std::cerr << "*** MetadataProvider::start() : start worker" << std::endl;
+        m_exiting = false;
         m_worker = std::thread(&MetadataProvider::execute, this);
     }
 }
 
 void MetadataProvider::stop()
 {
+    std::cerr << "*** MetadataProvider::stop()" << std::endl;
     if (m_working)
     {
+        std::cerr << "*** MetadataProvider::stop() : stop worker" << std::endl;
         m_exiting = true;
         m_worker.join();
         m_working = false;
+        m_ms.clear();
+        m_locations.clear();
         disconnect();
     }
 }
@@ -226,18 +248,34 @@ void MetadataProvider::disconnect()
 
 void MetadataProvider::execute()
 {
+    std::cerr << "*** MetadataProvider::execute()" << std::endl;
     try
     {
         m_working = true;
 
+        std::cerr << "*** MetadataProvider::execute() : trying to connect" << std::endl;
         ConnectionLock connection(this);
+        std::cerr << "*** MetadataProvider::execute() : connect : " << (connection.isSuccessful() ? "SUCC" : "FAIL") << std::endl;
         if (connection.isSuccessful())
         {
-            vmf::FormatXML xml;
-//            std::vector<std::shared_ptr<vmf::MetadataInternal>> metadata;
+            std::shared_ptr<vmf::Format> f = std::make_shared<vmf::FormatXML>();
+
+            //actual compressor ID will be recognized at parse() call, but should be the following
+            //TODO: specify actual Encryptor and passphrase
+            {
+                std::unique_lock< std::mutex > lock( m_lock );
+                m_wrappingInfo->setCompressionID("com.intel.vmf.compressor.zlib");
+                m_wrappingInfo->setPassphrase("");
+            }
+
+            f = std::make_shared<vmf::FormatCompressed>(f, m_wrappingInfo->compressionID().toStdString());
+
+            vmf::FormatEncrypted parser(f, nullptr);
+
             std::vector<vmf::MetadataInternal> metadata;
             std::vector<std::shared_ptr<vmf::MetadataSchema>> schemas;
             std::vector<std::shared_ptr<vmf::MetadataStream::VideoSegment>> segments;
+            std::vector< vmf::Stat > stats;
             vmf::Format::AttribMap attribs;
             vmf::Format::ParseCounters c;
 
@@ -248,14 +286,18 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
-                    c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, stats, attribs);
                     if (!(c.segments > 0))
                         throw std::runtime_error("expected video segment(s) not sent by server");
                     for (auto segment : segments)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
-                        m_ms.addVideoSegment(segment);
+                        if(m_ms.getAllVideoSegments().size() == 0)
+                        {
+                            m_ms.addVideoSegment(segment);
+                        }
                     }
+                    m_deviceId = QString::fromStdString(m_ms.getAllVideoSegments()[0]->getTitle());
                     emit segmentAdded();
                 }
             }
@@ -265,39 +307,58 @@ void MetadataProvider::execute()
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
-                    c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, stats, attribs);
                     if (!(c.schemas > 0))
                         throw std::runtime_error("expected video schema(s) not sent by server");
                     for (auto schema : schemas)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
-                        m_ms.addSchema(schema);
+                        if(!m_ms.getSchema(schema->getName()))
+                        {
+                            m_ms.addSchema(schema);
+                        }
                     }
                     emit schemaAdded();
                 }
             }
+
+            //set up statistics object
+            std::vector< vmf::StatField > statFields;
+            statFields.emplace_back(countStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Count));
+            statFields.emplace_back(minStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Min));
+            statFields.emplace_back(avgStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Average));
+            statFields.emplace_back(lastStatName, schemaName, descName, latFieldName,
+                                    vmf::StatOpFactory::builtinName(vmf::StatOpFactory::BuiltinOp::Last));
+            m_ms.addStat(vmf::Stat(statName, statFields, vmf::Stat::UpdateMode::Manual));
 
             while (!m_exiting)
             {
                 ssize_t size = receiveMessage(m_sock, buf, sizeof(buf), true);
                 if (size > 0)
                 {
+                    std::cerr << std::string(buf) << std::endl;
+
                     metadata.clear();
-                    c = xml.parse(std::string(buf), metadata, schemas, segments, attribs);
+                    c = parser.parse(std::string(buf), metadata, schemas, segments, stats, attribs);
                     if (!(c.metadata > 0))
                         throw std::runtime_error("expected metadata not sent by server");
                     int num = 0;
                     for (auto md : metadata)
                     {
                         std::unique_lock< std::mutex > lock( m_lock );
+                        //md.id = vmf::INVALID_ID;
                         m_ms.add(md);
-                        updateLocations();
                         ++num;
                     }
-                    emit metadataAdded();
-//                    emit locationsChanged(m_locations);
-//                    emit locationsChanged(QQmlListProperty<Location>(this, m_locations));
-//                    emit locationsChanged(QPointF(135.7, -97.13));
+                    updateLocations();
+                    std::cerr << "*** MetadataProvider::execute() : points per message = " << num << std::endl;
+                    if(!m_exiting)
+                    {
+                        emit metadataAdded();
+                    }
                 }
             }
         }
@@ -306,18 +367,32 @@ void MetadataProvider::execute()
     {
         std::cerr << "[MetadataProvider] EXCEPTION: " << e.what() << std::endl;
     }
+    std::cerr << "*** MetadataProvider::execute() ***" << std::endl;
 }
 
-//QList<Location> MetadataProvider::locations() const
-//QQmlListProperty<Location> MetadataProvider::locations()
-//QString MetadataProvider::locations()
-QPointF MetadataProvider::locations() const
-//QList<QPointF> MetadataProvider::locations() const
+
+QQmlListProperty<Location> MetadataProvider::locations()
 {
-//    std::unique_lock< std::mutex > lock( m_lock );
-//    return QQmlListProperty<Location>(this, m_locations);
-//    return QString(">>= location(s)");
-    return QPointF(-135.7, 97.13);
+    std::unique_lock< std::mutex > lock( m_lock );
+    return QQmlListProperty<Location>(this, m_locations);
+}
+
+WrappingInfo* MetadataProvider::wrappingInfo()
+{
+    std::unique_lock< std::mutex > lock( m_lock );
+    return m_wrappingInfo;
+}
+
+StatInfo* MetadataProvider::statInfo()
+{
+    std::unique_lock< std::mutex > lock( m_lock );
+    return m_statInfo;
+}
+
+QString MetadataProvider::deviceId()
+{
+    std::unique_lock< std::mutex > lock( m_lock );
+    return m_deviceId;
 }
 
 double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const std::string& name)
@@ -338,27 +413,32 @@ double MetadataProvider::getFieldValue(std::shared_ptr<vmf::Metadata> md, const 
 
 void MetadataProvider::updateLocations()
 {
+    std::unique_lock< std::mutex > lock( m_lock );
+    std::cerr << "*** MetadataProvider::updateLocations()" << std::endl;
+
     vmf::MetadataSet ms = m_ms.getAll();
 
-    for(int i = (int)m_locations.size(); i < (int)ms.size(); ++i)
+    std::sort(ms.begin(), ms.end(), [](std::shared_ptr<vmf::Metadata> a, std::shared_ptr<vmf::Metadata> b) -> bool{
+        return (a->getId() < b->getId());
+    });
+
+    m_locations.clear();
+    for(std::shared_ptr<vmf::Metadata> md : ms)
     {
-        std::shared_ptr<vmf::Metadata> md = ms[i];
-
-//        Location* loc = new Location;
-        QPointF loc;
-
-//        loc->setLatitude(getFieldValue(md, "latitude"));
-//        loc->setLongitude(getFieldValue(md, "longitude"));
-//        loc.setAltitude(getFieldValue(md, "altitude"));
-//        loc.setAccuracy(getFieldValue(md, "accuracy"));
-//        loc.setSpeed(getFieldValue(md, "speed"));
-
-        loc.setX(getFieldValue(md, "latitude"));
-        loc.setY(getFieldValue(md, "longitude"));
-
-//        m_locations.push_back(loc);
-        m_locations.push_back(loc);
-        emit locationsChanged(loc);
+        Location* loc = new Location();
+        loc->setLatitude( getFieldValue(md, latFieldName));
+        loc->setLongitude(getFieldValue(md, lngFieldName));
+        m_locations.append(loc);
     }
+
+    //update statistics: doRescan + doWait
+    vmf::Stat& stat = m_ms.getStat(statName);
+    stat.update(true, true);
+
+    //grab statistics
+    m_statInfo->setCount((vmf::vmf_integer)stat.getField(countStatName).getValue());
+    m_statInfo->setMinLat(stat.getField(minStatName).getValue());
+    m_statInfo->setAvgLat(stat.getField(avgStatName).getValue());
+    m_statInfo->setLastLat(stat.getField(lastStatName).getValue());
 }
 
